@@ -13,6 +13,7 @@ export function Sidebar() {
   const toggle = useUiStore((state) => state.toggleSidebar);
   const postCount = usePostStore((state) => state.posts.length);
   const addTag = useFilterStore((state) => state.addTagFilter);
+  const setMeta = useFilterStore((state) => state.setMetaFilter);
   const presets = useFilterStore((state) => state.presets);
   const loadPreset = useFilterStore((state) => state.loadPreset);
   const deletePreset = useFilterStore((state) => state.deletePreset);
@@ -33,8 +34,8 @@ export function Sidebar() {
       <div className="sidebar-heading"><span>Browse</span><button title="Collapse sidebar" onClick={toggle}><PanelLeftClose size={16} /></button></div>
       <nav className="side-nav">
         <button className="is-current"><Compass size={16} /> Discover <span>{postCount || '—'}</span></button>
-        <button onClick={() => addTag('order:score', 'include')}><Grid3X3 size={16} /> Top scored</button>
-        <button onClick={() => addTag('order:rank', 'include')}><Clock3 size={16} /> Trending</button>
+        <button onClick={() => setMeta({ order: 'score' })}><Grid3X3 size={16} /> Top scored</button>
+        <button onClick={() => setMeta({ order: 'rank' })}><Clock3 size={16} /> Trending</button>
       </nav>
       <div className="sidebar-section">
         <h2>Quick tags</h2>

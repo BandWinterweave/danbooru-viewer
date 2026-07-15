@@ -6,6 +6,8 @@ import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { TagAutocompleteResult } from '../../types/api';
 
+const suggestionCache = new Map<string, { expiresAt: number; items: TagAutocompleteResult[] }>();
+
 export function SearchBar() {
   const searchText = useFilterStore((state) => state.searchText);
   const setSearchText = useFilterStore((state) => state.setSearchText);
@@ -24,12 +26,15 @@ export function SearchBar() {
     let cancelled = false;
     const timeout = window.setTimeout(async () => {
       try {
-        const result = await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        const cacheKey = `${activeSource}:${lastTerm.toLowerCase()}`;
+        const cached = suggestionCache.get(cacheKey);
+        const result = cached && cached.expiresAt > Date.now() ? cached.items : await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        if (!cached || cached.expiresAt <= Date.now()) suggestionCache.set(cacheKey, { expiresAt: Date.now() + 300_000, items: result });
         if (!cancelled) { setSuggestions(result); setOpen(true); }
       } catch {
         if (!cancelled) setSuggestions([]);
       }
-    }, 300);
+    }, 150);
     return () => { cancelled = true; window.clearTimeout(timeout); };
   }, [activeSource, credentials, searchText]);
 

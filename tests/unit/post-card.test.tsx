@@ -57,7 +57,7 @@ describe('PostCard', () => {
     vi.useFakeTimers();
     const { container } = render(<PostCard post={post} />);
     fireEvent.mouseMove(container.querySelector('.post-card')!, { clientX: 200, clientY: 200 });
-    act(() => vi.advanceTimersByTime(2000));
+    act(() => vi.advanceTimersByTime(1000));
     expect(screen.getByText('re naya')).toBeInTheDocument();
     expect(screen.getByText('original')).toBeInTheDocument();
     expect(screen.getByText('highres')).toBeInTheDocument();

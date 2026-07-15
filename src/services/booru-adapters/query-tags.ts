@@ -14,14 +14,16 @@ export function buildSourceTags(source: BooruSource, query: SearchQuery): string
   const terms = [
     query.tags?.trim(),
     rating ? `rating:${ratingValues[source][rating] ?? rating}` : '',
-    query.scoreMin !== undefined ? `score:>=${query.scoreMin}` : '',
+    query.scoreMin !== undefined
+      ? `score:>=${query.scoreMin}`
+      : source === 'danbooru' && query.order === 'score' && !query.tags?.trim() ? 'score:>50' : '',
     source === 'danbooru' && query.dateAfter ? `date:>=${query.dateAfter}` : '',
     query.minWidth ? `width:>=${query.minWidth}` : '',
     query.minHeight ? `height:>=${query.minHeight}` : '',
   ];
   if (query.order) {
     terms.push(source === 'gelbooru' || source === 'safebooru' || source === 'rule34'
-      ? `sort:${query.order}:desc`
+      ? `sort:${query.order === 'rank' ? 'updated' : query.order}:desc`
       : `order:${query.order}`);
   }
   return terms.filter(Boolean).join(' ');

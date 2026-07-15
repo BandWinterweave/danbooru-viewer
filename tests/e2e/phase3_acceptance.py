@@ -37,10 +37,14 @@ def post(post_id: int):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
-    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    context = browser.new_context(viewport={"width": 1440, "height": 900})
+    context.grant_permissions(["clipboard-read", "clipboard-write"], origin="http://127.0.0.1:5173")
+    page = context.new_page()
     errors = []
+    downloads = []
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
     page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on("download", lambda download: downloads.append(download.suggested_filename))
 
     def route(request_route):
         url = request_route.request.url
@@ -70,6 +74,13 @@ with sync_playwright() as p:
     page.wait_for_load_state("networkidle")
     page.locator(".post-card").first.wait_for()
     assert page.locator(".post-card").count() < 40, "PostGrid is not virtualized"
+
+    copy_box = page.locator(".post-copy").first.bounding_box()
+    select_box = page.locator(".post-select").first.bounding_box()
+    assert copy_box and select_box and copy_box["x"] < select_box["x"]
+    page.locator(".post-copy").first.click()
+    page.get_by_label("Tags copied").wait_for()
+    assert page.evaluate("navigator.clipboard.readText()") == "sample_artist original 1girl highres"
 
     # A quick control click must not open the dwell tooltip.
     page.locator(".post-select").first.click()
@@ -106,7 +117,7 @@ with sync_playwright() as p:
     page.get_by_title("Grid layout").click()
     first_card = page.locator(".post-card").first
     first_card.hover(position={"x": 80, "y": 80})
-    page.wait_for_timeout(2100)
+    page.wait_for_timeout(1100)
     original_tag = page.locator(".tooltip-tag").filter(has_text="original")
     original_tag.hover()
     original_tag.get_by_title("Include original").click()
@@ -123,6 +134,9 @@ with sync_playwright() as p:
     page.locator(".detail-image .media-placeholder").wait_for()
     page.get_by_title("Close details").click()
     page.locator(".post-image-link").first.click()
+    with page.expect_download() as download_info:
+        page.keyboard.press("d")
+    assert download_info.value.suggested_filename.endswith(".jpg")
     page.locator("button[title='Open image viewer']").last.click()
     page.locator(".yarl__container").wait_for()
     viewer_image = page.locator(".yarl__slide_image").first
@@ -141,9 +155,10 @@ with sync_playwright() as p:
     page.locator(".viewer-video").wait_for()
     page.keyboard.press("ArrowLeft")
     page.locator(".image-note").wait_for()
-    with page.expect_download() as download_info:
-        page.keyboard.press("d")
-    assert download_info.value.suggested_filename.endswith(".jpg")
+    download_count = len(downloads)
+    page.keyboard.press("d")
+    page.wait_for_timeout(250)
+    assert len(downloads) == download_count, "D downloaded while the detail drawer was not the active view"
     page.screenshot(path=ARTIFACTS / "phase3-desktop.png", full_page=True)
     page.keyboard.press("Escape")
 
