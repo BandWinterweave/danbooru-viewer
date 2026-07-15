@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Danbooru Viewer",
+  "description": "A focused new-tab browser for Danbooru.",
+  "version": "0.1.0",
+  "permissions": ["storage", "downloads", "unlimitedStorage"],
+  "host_permissions": [
+    "https://*.donmai.us/*",
+    "https://gelbooru.com/*",
+    "https://*.gelbooru.com/*",
+    "https://*.safebooru.org/*",
+    "https://*.yande.re/*",
+    "https://*.rule34.xxx/*"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "src/newtab/index.html"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "content_scripts": [{
+    "matches": ["https://danbooru.donmai.us/posts*", "https://danbooru.donmai.us/posts/*"],
+    "js": ["src/content/index.ts"],
+    "run_at": "document_idle"
+  }],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Danbooru Viewer"
+  },
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "toggle-slideshow": {
+      "suggested_key": { "default": "Ctrl+Shift+S", "mac": "Command+Shift+S" },
+      "description": "Toggle slideshow"
+    }
+  }
+}
