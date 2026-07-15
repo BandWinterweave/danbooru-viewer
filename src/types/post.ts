@@ -20,6 +20,7 @@ export interface UnifiedPost {
   favCount: number;
   isFavorited?: boolean;
   uploader: string;
+  uploaderId?: number;
   sourceUrl: string;
   imageWidth: number;
   imageHeight: number;
@@ -28,11 +29,14 @@ export interface UnifiedPost {
   previewUrl: string;
   sampleUrl: string;
   fileUrl: string;
+  playbackUrl?: string;
+  duration?: number;
   md5: string;
   createdAt: string;
   updatedAt: string;
   parentId: number | null;
   hasChildren: boolean;
+  status?: 'active' | 'pending' | 'flagged' | 'deleted';
   poolIds?: number[];
   tagStringGeneral: string;
   tagStringArtist: string;

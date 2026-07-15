@@ -26,7 +26,8 @@ export function useKeyboard() {
       const key = event.key.toLowerCase();
       const ui = useUiStore.getState();
       const postState = usePostStore.getState();
-      const current = ui.currentPost;
+      const viewable = postState.posts.filter((post) => post.playbackUrl || post.fileUrl || post.sampleUrl || post.previewUrl);
+      const current = ui.viewerOpen ? viewable[ui.viewerIndex] ?? ui.currentPost : ui.currentPost;
       if (event.ctrlKey && event.shiftKey && key === 's') {
         event.preventDefault();
         if (!ui.viewerOpen && current) ui.openViewer(current);
@@ -45,7 +46,7 @@ export function useKeyboard() {
       }
       if (key === 'escape') { if (ui.viewerOpen) ui.closeViewer(); else if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
       if (key === 'f' && current) { void useFavoriteStore.getState().toggleLocal(current); return; }
-      if (key === 'd' && current) { void downloadPost(current, 'full', settings.downloadRule); return; }
+      if (key === 'd' && current) { void downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule); return; }
       if (ui.viewerOpen) return;
       if ((key === 'arrowleft' || key === 'arrowright') && current) {
         const index = postState.posts.findIndex((post) => post.id === current.id && post.source === current.source);

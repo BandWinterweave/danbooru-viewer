@@ -1,10 +1,10 @@
-import { Clock3, Compass, Download, Grid3X3, PanelLeftClose, Trash2, Upload } from 'lucide-react';
+import { Clock3, Compass, Download, Grid3X3, PanelLeftClose, Plus, Trash2, Upload, X } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import { usePostStore } from '../../stores/post-store';
 import { useUiStore } from '../../stores/ui-store';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useSettingsStore } from '../../stores/settings-store';
-import { useRef } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { displayImageUrl } from '../../services/api/image-url';
 import { FavoriteGroups } from '../favorites/FavoriteGroups';
 
@@ -17,11 +17,16 @@ export function Sidebar() {
   const loadPreset = useFilterStore((state) => state.loadPreset);
   const deletePreset = useFilterStore((state) => state.deletePreset);
   const source = useSettingsStore((state) => state.activeSource);
+  const quickTags = useSettingsStore((state) => state.quickTags);
+  const addQuickTag = useSettingsStore((state) => state.addQuickTag);
+  const removeQuickTag = useSettingsStore((state) => state.removeQuickTag);
   const favorites = useFavoriteStore((state) => state.favorites);
   const exportJson = useFavoriteStore((state) => state.exportJson);
   const importJson = useFavoriteStore((state) => state.importJson);
   const openDetail = useUiStore((state) => state.openDetail);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [quickTag, setQuickTag] = useState('');
+  const submitQuickTag = (event: FormEvent) => { event.preventDefault(); addQuickTag(quickTag); setQuickTag(''); };
   if (!open) return null;
   return (
     <aside className="sidebar">
@@ -33,9 +38,9 @@ export function Sidebar() {
       </nav>
       <div className="sidebar-section">
         <h2>Quick tags</h2>
-        {['landscape', 'original', 'pixel_art', 'animated'].map((tag) => (
-          <button key={tag} onClick={() => addTag(tag, 'include')}>{tag.replaceAll('_', ' ')}</button>
-        ))}
+        <form className="quick-tag-form" onSubmit={submitQuickTag}><input value={quickTag} placeholder="Add a tag" aria-label="New quick tag" onChange={(event) => setQuickTag(event.target.value)} /><button title="Add quick tag" disabled={!quickTag.trim()}><Plus size={12} /></button></form>
+        <div className="quick-tag-list">{quickTags.map((tag) => <span key={tag}><button onClick={() => addTag(tag, 'include')}>{tag.replaceAll('_', ' ')}</button><button title={`Remove ${tag}`} onClick={() => removeQuickTag(tag)}><X size={11} /></button></span>)}</div>
+        {!quickTags.length && <p className="sidebar-empty">No quick tags</p>}
       </div>
       <div className="sidebar-section"><h2>Filter presets</h2>{presets.filter((preset) => preset.sourceId === source).map((preset) => <div className="sidebar-list-item" key={preset.id}><button onClick={() => loadPreset(preset.id)}>{preset.name}</button><button title={`Delete ${preset.name}`} onClick={() => deletePreset(preset.id)}><Trash2 size={12} /></button></div>)}{!presets.some((preset) => preset.sourceId === source) && <p className="sidebar-empty">No saved presets</p>}</div>
       <FavoriteGroups />

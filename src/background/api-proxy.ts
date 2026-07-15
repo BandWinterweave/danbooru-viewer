@@ -35,7 +35,8 @@ export async function proxyRequest(message: ApiProxyRequest): Promise<ApiProxyRe
       return { ok: false, status: response.status, error: (await response.text()).slice(0, 500) || response.statusText };
     }
     const contentType = response.headers.get('content-type') ?? '';
-    const data: unknown = response.status === 204 ? null : contentType.includes('json') ? await response.json() : await response.text();
+    const responseText = response.status === 204 ? '' : await response.text();
+    const data: unknown = response.status === 204 ? null : contentType.includes('json') ? (responseText.trim() ? JSON.parse(responseText) : []) : responseText;
     if (cacheable) cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL, value: data });
     if (method !== 'GET') cache.clear();
     return { ok: true, status: response.status, data };

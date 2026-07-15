@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PostCard } from '../../src/components/posts/PostCard';
 import { normalizePost } from '../../src/services/booru-adapters/danbooru';
 import { useFilterStore } from '../../src/stores/filter-store';
@@ -40,6 +40,7 @@ describe('PostCard', () => {
     useFilterStore.setState({ searchText: '', activeFilters: [], ratings: [] });
     useUiStore.setState({ detailOpen: false, viewerOpen: false, currentPost: null });
   });
+  afterEach(() => vi.useRealTimers());
 
   it('uses a large thumbnail and exposes the canonical post link', () => {
     const { container } = render(<PostCard post={post} />);
@@ -53,8 +54,10 @@ describe('PostCard', () => {
   });
 
   it('shows multiple tags and applies the selected tag', () => {
+    vi.useFakeTimers();
     const { container } = render(<PostCard post={post} />);
-    fireEvent.focus(container.querySelector('.post-card')!);
+    fireEvent.mouseMove(container.querySelector('.post-card')!, { clientX: 200, clientY: 200 });
+    act(() => vi.advanceTimersByTime(2000));
     expect(screen.getByText('re naya')).toBeInTheDocument();
     expect(screen.getByText('original')).toBeInTheDocument();
     expect(screen.getByText('highres')).toBeInTheDocument();
@@ -65,7 +68,7 @@ describe('PostCard', () => {
 
   it('opens details from the image and the viewer from the rating badge', () => {
     render(<PostCard post={post} />);
-    fireEvent.click(screen.getByTitle('Open post details'));
+    fireEvent.click(screen.getByLabelText('Open post details'));
     expect(useUiStore.getState()).toMatchObject({ detailOpen: true, viewerOpen: false, currentPost: post });
     useUiStore.setState({ detailOpen: false, viewerOpen: false, currentPost: null });
     fireEvent.click(screen.getByTitle('Open image viewer'));

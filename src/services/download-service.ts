@@ -2,7 +2,7 @@ import { createStore, get, set } from 'idb-keyval';
 import type { UnifiedPost } from '../types/post';
 import { displayImageUrl } from './api/image-url';
 
-export type DownloadSize = 'full' | 'sample' | 'preview';
+export type DownloadSize = 'playback' | 'full' | 'sample' | 'preview';
 
 export interface DownloadHistoryEntry {
   key: string;
@@ -18,6 +18,7 @@ const memoryHistory = new Map<string, DownloadHistoryEntry>();
 function historyKey(post: UnifiedPost) { return post.md5 || `${post.source}:${post.id}`; }
 
 export function resolveDownloadUrl(post: UnifiedPost, size: DownloadSize) {
+  if (size === 'playback') return post.playbackUrl || post.fileUrl || post.sampleUrl || post.previewUrl;
   if (size === 'preview') return post.previewUrl || post.sampleUrl || post.fileUrl;
   if (size === 'sample') return post.sampleUrl || post.fileUrl || post.previewUrl;
   return post.fileUrl || post.sampleUrl || post.previewUrl;

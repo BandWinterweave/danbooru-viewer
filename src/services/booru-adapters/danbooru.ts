@@ -26,6 +26,7 @@ interface DanbooruRawPost {
   fav_count: number;
   is_favorited?: boolean;
   uploader_name?: string;
+  uploader_id?: number;
   source: string;
   image_width: number;
   image_height: number;
@@ -40,6 +41,13 @@ interface DanbooruRawPost {
   parent_id: number | null;
   has_children: boolean;
   pool_ids?: number[];
+  is_pending?: boolean;
+  is_flagged?: boolean;
+  is_deleted?: boolean;
+  media_asset?: {
+    duration?: number;
+    variants?: Array<{ type?: string; url?: string; file_ext?: string; width?: number; height?: number }>;
+  };
 }
 
 interface DanbooruAutocompleteItem {
@@ -54,6 +62,9 @@ function splitTags(value: string | undefined, category: TagCategory) {
 }
 
 export function normalizePost(raw: DanbooruRawPost): UnifiedPost {
+  const playableVariant = raw.media_asset?.variants
+    ?.filter((variant) => ['mp4', 'webm'].includes(variant.file_ext?.toLowerCase() ?? '') && variant.url)
+    .sort((left, right) => (right.width ?? 0) * (right.height ?? 0) - (left.width ?? 0) * (left.height ?? 0))[0];
   return {
     id: raw.id,
     source: 'danbooru',
@@ -72,6 +83,7 @@ export function normalizePost(raw: DanbooruRawPost): UnifiedPost {
     favCount: raw.fav_count ?? 0,
     isFavorited: raw.is_favorited ?? false,
     uploader: raw.uploader_name ?? 'unknown',
+    uploaderId: raw.uploader_id,
     sourceUrl: raw.source ?? '',
     imageWidth: raw.image_width ?? 0,
     imageHeight: raw.image_height ?? 0,
@@ -80,11 +92,14 @@ export function normalizePost(raw: DanbooruRawPost): UnifiedPost {
     previewUrl: raw.preview_file_url ?? raw.large_file_url ?? raw.file_url ?? '',
     sampleUrl: raw.large_file_url ?? raw.file_url ?? raw.preview_file_url ?? '',
     fileUrl: raw.file_url ?? raw.large_file_url ?? raw.preview_file_url ?? '',
+    playbackUrl: playableVariant?.url ?? (['mp4', 'webm'].includes(raw.file_ext?.toLowerCase()) ? raw.file_url : undefined),
+    duration: typeof raw.media_asset?.duration === 'number' ? raw.media_asset.duration : undefined,
     md5: raw.md5 ?? '',
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
     parentId: raw.parent_id,
     hasChildren: raw.has_children ?? false,
+    status: raw.is_deleted ? 'deleted' : raw.is_flagged ? 'flagged' : raw.is_pending ? 'pending' : 'active',
     poolIds: raw.pool_ids ?? [],
     tagStringGeneral: raw.tag_string_general ?? '',
     tagStringArtist: raw.tag_string_artist ?? '',
@@ -106,7 +121,7 @@ export const danbooruAdapter: BooruAdapter = {
     const url = new URL('/posts.json', BASE_URL);
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('page', String(page));
-    url.searchParams.set('only', 'id,rating,tag_string,tag_string_general,tag_string_artist,tag_string_copyright,tag_string_character,tag_string_meta,score,up_score,down_score,fav_count,is_favorited,uploader_name,source,image_width,image_height,file_size,file_ext,preview_file_url,large_file_url,file_url,md5,created_at,updated_at,parent_id,has_children,pool_ids');
+    url.searchParams.set('only', 'id,rating,tag_string,tag_string_general,tag_string_artist,tag_string_copyright,tag_string_character,tag_string_meta,score,up_score,down_score,fav_count,is_favorited,uploader_name,uploader_id,source,image_width,image_height,file_size,file_ext,preview_file_url,large_file_url,file_url,md5,created_at,updated_at,parent_id,has_children,pool_ids,is_pending,is_flagged,is_deleted,media_asset');
     const terms = buildSourceTags('danbooru', query);
     if (terms) url.searchParams.set('tags', terms);
 

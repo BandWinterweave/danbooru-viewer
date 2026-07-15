@@ -17,6 +17,7 @@ interface UiStore {
   openViewer: (post: UnifiedPost) => void;
   closeViewer: () => void;
   setCurrentPost: (post: UnifiedPost) => void;
+  setViewerIndex: (index: number) => void;
   toggleAdvancedFilters: () => void;
   setShortcutNotice: (message: string) => void;
 }
@@ -36,6 +37,7 @@ export const useUiStore = create<UiStore>()(persist(
     openViewer: (post) => set({ currentPost: post, viewerOpen: true }),
     closeViewer: () => set({ viewerOpen: false }),
     setCurrentPost: (currentPost) => set({ currentPost }),
+    setViewerIndex: (viewerIndex) => set({ viewerIndex }),
     toggleAdvancedFilters: () => set((state) => ({ advancedFiltersOpen: !state.advancedFiltersOpen })),
     setShortcutNotice: (shortcutNotice) => set({ shortcutNotice }),
   }),

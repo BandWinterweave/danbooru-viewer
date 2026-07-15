@@ -36,7 +36,8 @@ export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource)
     imageHeight: Number(raw.height ?? 0), fileSize: 0, fileExt: raw.file_url?.split('.').at(-1)?.split('?')[0] ?? '',
     previewUrl: absoluteUrl(raw.preview_url ?? raw.sample_url ?? raw.file_url, source), sampleUrl: absoluteUrl(raw.sample_url ?? raw.file_url ?? raw.preview_url, source),
     fileUrl: absoluteUrl(raw.file_url ?? raw.sample_url ?? raw.preview_url, source), md5: raw.md5 ?? '', createdAt: date, updatedAt: date,
-    parentId: null, hasChildren: false, poolIds: [], tagStringGeneral: tagString, tagStringArtist: '', tagStringCopyright: '', tagStringCharacter: '', tagStringMeta: '',
+    playbackUrl: ['mp4', 'webm'].includes(raw.file_url?.split('.').at(-1)?.split('?')[0].toLowerCase() ?? '') ? absoluteUrl(raw.file_url, source) : undefined,
+    parentId: null, hasChildren: false, status: 'active', poolIds: [], tagStringGeneral: tagString, tagStringArtist: '', tagStringCopyright: '', tagStringCharacter: '', tagStringMeta: '',
   };
 }
 
@@ -61,11 +62,11 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       const terms = buildSourceTags(options.id, query);
       if (terms) url.searchParams.set('tags', terms);
       withGelbooruAuth(url, credentials);
-      let response: GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string;
+      let response: GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string | null;
       try { response = await apiGet<GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string>(url); }
       catch (error) { if (error instanceof ApiRequestError && error.status === 401) throw new Error(`${options.name} rejected the credentials. Check the user ID and API key in Settings.`); throw error; }
       if (typeof response === 'string') throw new Error(response.includes('Missing authentication') ? `${options.name} requires a user ID and API key for API access. Configure them in Settings.` : `${options.name} returned an invalid API response.`);
-      const posts = Array.isArray(response) ? response : response.post ?? [];
+      const posts = Array.isArray(response) ? response : response?.post ?? [];
       return { items: posts.map((post) => normalizeGelbooruPost(post, options.id)).filter((post) => isOnOrAfter(post.createdAt, query.dateAfter)), page, limit, hasMore: posts.length === limit };
     },
     async getPost(id: number, credentials?: Credentials) {

@@ -18,4 +18,10 @@ describe('background API proxy', () => {
     expect(response).toMatchObject({ ok: true, status: 204 });
     expect(fetch).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({ method: 'POST', body: '{}', headers: { Authorization: 'Basic test' } }));
   });
+
+  it('normalizes an empty JSON response to an empty collection', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const response = await proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://safebooru.org/index.php?page=dapi&json=1', method: 'GET' } });
+    expect(response).toMatchObject({ ok: true, status: 200, data: [] });
+  });
 });

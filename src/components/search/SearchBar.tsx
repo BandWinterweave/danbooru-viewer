@@ -67,7 +67,7 @@ export function SearchBar() {
       {open && suggestions.length > 0 && (
         <div className="suggestions" role="listbox">
           {suggestions.map((suggestion) => (
-            <button type="button" role="option" key={suggestion.name} onMouseDown={() => selectSuggestion(suggestion.name)}>
+            <button type="button" role="option" data-category={suggestion.category === 1 ? 'artist' : suggestion.category === 3 ? 'copyright' : suggestion.category === 4 ? 'character' : suggestion.category === 5 ? 'meta' : 'general'} key={suggestion.name} onMouseDown={() => selectSuggestion(suggestion.name)}>
               <span>{suggestion.name.replaceAll('_', ' ')}</span>
               <small>{suggestion.postCount.toLocaleString()}</small>
             </button>

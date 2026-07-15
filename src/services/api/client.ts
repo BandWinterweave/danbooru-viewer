@@ -36,11 +36,12 @@ export async function apiRequest<T>(url: URL, options: { method?: 'GET' | 'POST'
       ? new URL(`/__api/${source}${url.pathname}${url.search}`, window.location.origin)
       : url;
     const direct = await ky(requestUrl, { method, headers, body, throwHttpErrors: false, retry: { limit: method === 'GET' ? 2 : 0 }, timeout: 15_000 });
+    const responseText = direct.ok && direct.status !== 204 ? await direct.text() : '';
     response = {
       ok: direct.ok,
       status: direct.status,
-      data: direct.ok ? (direct.status === 204 ? null as T : direct.headers.get('content-type')?.includes('json') ? await direct.json() as T : await direct.text() as T) : undefined,
-      error: direct.ok ? undefined : await direct.text(),
+      data: direct.ok ? (direct.status === 204 ? null as T : direct.headers.get('content-type')?.includes('json') ? (responseText.trim() ? JSON.parse(responseText) as T : [] as T) : responseText as T) : undefined,
+      error: direct.ok ? undefined : responseText,
     };
   }
 

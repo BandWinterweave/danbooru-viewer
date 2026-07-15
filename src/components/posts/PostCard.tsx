@@ -5,10 +5,12 @@ import { useFilterStore } from '../../stores/filter-store';
 import { useUiStore } from '../../stores/ui-store';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import type { UnifiedPost } from '../../types/post';
-import { displayImageUrl } from '../../services/api/image-url';
 import { hasDownloaded } from '../../services/download-service';
 import { DownloadMenu } from '../downloads/DownloadMenu';
 import { usePostStore } from '../../stores/post-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import { postPageUrl } from '../../services/post-media';
+import { MediaPreview } from './MediaPreview';
 
 function orderedTags(post: UnifiedPost) {
   const order = { artist: 0, character: 1, copyright: 2, general: 3, meta: 4 };
@@ -25,6 +27,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const toggleInGroup = useFavoriteStore((state) => state.toggleInGroup);
   const selected = usePostStore((state) => state.selectedPostKeys.includes(`${post.source}:${post.id}`));
   const toggleSelected = usePostStore((state) => state.toggleSelected);
+  const layout = useSettingsStore((state) => state.layout);
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -34,10 +37,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const cursorPoint = useRef({ x: 0, y: 0 });
   const tags = orderedTags(post);
   const queryTag = tags.find((tag) => tag.category === 'artist') ?? tags.find((tag) => tag.category === 'character') ?? tags[0];
-  const previewUrl = displayImageUrl(post.previewUrl);
-  const sampleUrl = displayImageUrl(post.sampleUrl);
-  const baseUrls = { danbooru: 'https://danbooru.donmai.us/posts/', gelbooru: 'https://gelbooru.com/index.php?page=post&s=view&id=', safebooru: 'https://safebooru.org/index.php?page=post&s=view&id=', yandere: 'https://yande.re/post/show/', rule34: 'https://rule34.xxx/index.php?page=post&s=view&id=' };
-  const postUrl = `${baseUrls[post.source]}${post.id}${post.source === 'danbooru' && queryTag ? `?q=${encodeURIComponent(queryTag.name)}` : ''}`;
+  const postUrl = `${postPageUrl(post)}${post.source === 'danbooru' && queryTag ? `?q=${encodeURIComponent(queryTag.name)}` : ''}`;
   const add = (tag: string, mode: 'include' | 'exclude') => (event: React.MouseEvent) => {
     event.stopPropagation();
     addTag(tag, mode);
@@ -70,6 +70,8 @@ export function PostCard({ post }: { post: UnifiedPost }) {
       style={{ width: tooltipWidth, left: tooltipLeft, top: tooltipAbove ? point.y - 12 : point.y + 14, transform: tooltipAbove ? 'translateY(-100%)' : undefined, '--tooltip-arrow-x': `${point.x - tooltipLeft}px` } as React.CSSProperties}
       onMouseEnter={cancelClose}
       onMouseLeave={scheduleClose}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <div className="post-tooltip-header">
         <strong>{post.source} #{post.id}</strong>
@@ -85,12 +87,11 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     </div>, document.body) : null;
 
   return (
-    <article className="post-card thumbnail-container" data-post-id={post.id} data-post-url={postUrl} data-file-url={post.fileUrl} tabIndex={0} onMouseEnter={trackDwell} onMouseMove={trackDwell} onMouseLeave={scheduleClose} onFocus={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setPoint({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }); setTooltipOpen(true); }} onBlur={scheduleClose} onClick={() => openDetail(post)} onKeyDown={(event) => event.key === 'Enter' && openDetail(post)}>
+    <article className={`post-card thumbnail-container ${layout === 'list' ? 'post-card--list' : ''}`} data-post-id={post.id} data-post-url={postUrl} data-file-url={post.fileUrl} tabIndex={0} onMouseEnter={trackDwell} onMouseMove={trackDwell} onMouseLeave={scheduleClose} onClick={() => openDetail(post)} onKeyDown={(event) => event.key === 'Enter' && openDetail(post)}>
       <button className={`post-select ${selected ? 'is-selected' : ''}`} title={selected ? 'Remove from batch' : 'Add to batch'} aria-label={selected ? 'Remove from batch' : 'Add to batch'} onClick={(event) => { event.stopPropagation(); toggleSelected(post); }}><Check size={13} /></button>
       {downloaded && <span className="downloaded-badge" title="Previously downloaded"><CircleCheck size={12} /> Downloaded</span>}
-      {post.sampleUrl || post.previewUrl
-        ? <a className="post-image-link" href={postUrl} title="Open post details" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><img src={sampleUrl || previewUrl} srcSet={previewUrl && sampleUrl ? `${previewUrl} 180w, ${sampleUrl} 850w` : undefined} sizes="(max-width: 720px) 50vw, 24vw" data-original={post.fileUrl} alt={`${post.source} post ${post.id}`} loading="lazy" /></a>
-        : <div className="image-missing">No preview</div>}
+      <a className="post-image-link" href={postUrl} aria-label="Open post details" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
+      {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.slice(0, 8).map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) || 'No tags available'}</p><dl><div><dt>Score</dt><dd>{post.score}</dd></div><div><dt>Favorites</dt><dd>{post.favCount}</dd></div><div><dt>Dimensions</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>Format</dt><dd>{post.fileExt.toUpperCase() || 'Unknown'}</dd></div><div><dt>Uploader</dt><dd>{post.uploader}</dd></div><div><dt>Status</dt><dd>{post.status ?? 'active'}</dd></div></dl></div>}
       <button className={`rating-badge rating-badge--${post.rating}`} title="Open image viewer" onClick={(event) => { event.stopPropagation(); openViewer(post); }}>{post.rating}</button>
       {tooltip}
     </article>

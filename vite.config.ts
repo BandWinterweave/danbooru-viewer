@@ -21,11 +21,19 @@ function developmentApiProxy(): Plugin {
             const allowed = ['donmai.us', 'safebooru.org', 'gelbooru.com', 'yande.re', 'rule34.xxx'].some((host) => imageUrl.hostname === host || imageUrl.hostname.endsWith(`.${host}`));
             if (imageUrl.protocol !== 'https:' || !allowed) { response.statusCode = 403; response.end('Image host is not allowed'); return; }
             const headers: Record<string, string> = { Accept: 'image/*', 'User-Agent': 'Danbooru Viewer/0.1' };
+            if (request.headers.range) headers.Range = request.headers.range;
             if (imageUrl.hostname.endsWith('.gelbooru.com')) headers.Referer = 'https://gelbooru.com/';
             const upstream = await fetch(imageUrl, { headers });
             response.statusCode = upstream.status;
-            for (const name of ['content-type', 'cache-control', 'etag']) { const value = upstream.headers.get(name); if (value) response.setHeader(name, value); }
-            response.end(Buffer.from(await upstream.arrayBuffer()));
+            for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control', 'etag']) { const value = upstream.headers.get(name); if (value) response.setHeader(name, value); }
+            if (!upstream.body) { response.end(); return; }
+            const reader = upstream.body.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              response.write(Buffer.from(value));
+            }
+            response.end();
           } catch (error) { response.statusCode = 502; response.end(error instanceof Error ? error.message : 'Image proxy failed'); }
           return;
         }
