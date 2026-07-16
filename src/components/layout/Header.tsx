@@ -47,7 +47,7 @@ export function Header() {
       <div className="search-row" ref={searchAreaRef}>
         <SearchBar />
           <RatingQuickToggle />
-          <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
+          <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} aria-expanded={filtersOpen} aria-controls="advanced-filters" title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
           <button className={`meta-shortcut preview-toggle ${hideUnavailablePreviews ? 'is-active' : ''}`} aria-pressed={hideUnavailablePreviews} title={shellMessages.header.hideUnavailablePreviews} onClick={() => setHideUnavailablePreviews(!hideUnavailablePreviews)}><ImageOff size={15} /> {shellMessages.header.hideUnavailable}</button>
       </div>
       <AdvancedFilter open={filtersOpen} />

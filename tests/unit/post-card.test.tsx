@@ -46,11 +46,14 @@ describe('PostCard', () => {
     const { container } = render(<PostCard post={post} />);
     const image = screen.getByRole('img');
     const link = image.closest('a');
+    const card = container.querySelector('.post-card');
 
     expect(image).toHaveAttribute('src', displayImageUrl(post.previewUrl));
     expect(image).toHaveAttribute('data-original', post.fileUrl);
     expect(link).toHaveAttribute('href', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
-    expect(container.querySelector('.post-card')).toHaveAttribute('data-post-url', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
+    expect(card).toHaveAttribute('data-post-url', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
+    expect(card).not.toHaveAttribute('tabindex');
+    expect(container.querySelector('.rating-badge')?.tagName).toBe('SPAN');
   });
 
   it('shows multiple tags and applies the selected tag', async () => {

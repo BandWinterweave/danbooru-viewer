@@ -14,6 +14,7 @@ import { MediaPreview } from './MediaPreview';
 import { formatTagsForCopy } from '../../services/tag-copy';
 import { postMessages } from '../../i18n/en-posts';
 import { runAsync } from '../../services/notifications';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 function orderedTags(post: UnifiedPost) {
   const order = { artist: 0, character: 1, copyright: 2, general: 3, meta: 4 };
@@ -42,6 +43,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const closeTimer = useRef<number>();
   const dwellTimer = useRef<number>();
   const cursorPoint = useRef({ x: 0, y: 0 });
+  const groupMenuRef = useRef<HTMLDivElement>(null);
   const tags = orderedTags(post);
   const queryTag = tags.find((tag) => tag.category === 'artist') ?? tags.find((tag) => tag.category === 'character') ?? tags[0];
   const postUrl = `${postPageUrl(post)}${post.source === 'danbooru' && queryTag ? `?q=${encodeURIComponent(queryTag.name)}` : ''}`;
@@ -75,6 +77,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const tooltipWidth = typeof window === 'undefined' ? 460 : Math.min(520, window.innerWidth - 20);
   const tooltipLeft = typeof window === 'undefined' ? point.x : Math.min(Math.max(point.x - tooltipWidth / 2, 10), window.innerWidth - tooltipWidth - 10);
   const tooltipAbove = point.y > 225;
+  useDismissibleLayer(groupMenuRef, groupMenuOpen, () => setGroupMenuOpen(false));
 
   const tooltip = tooltipOpen && typeof document !== 'undefined' ? createPortal(
     <div
@@ -90,7 +93,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
         <strong>{post.source} #{post.id}</strong>
         <span>{postMessages.card.score} {post.score}</span><span>{post.rating.toUpperCase()}</span><span>{post.fileSize ? `${(post.fileSize / 1024 / 1024).toFixed(1)} MB` : post.fileExt.toUpperCase()}</span><span>{post.imageWidth}×{post.imageHeight}</span>
         <div className="tooltip-actions">
-          <div className="card-group-control"><button title={postMessages.card.addToFavoriteGroup} onClick={(event) => { event.stopPropagation(); setGroupMenuOpen((value) => !value); }}><FolderPlus size={14} /></button>{groupMenuOpen && <div className="card-group-menu" onClick={(event) => event.stopPropagation()}>{groups.length ? groups.map((group) => { const selected = group.postKeys.includes(`${post.source}:${post.id}`); return <button className={selected ? 'is-selected' : ''} key={group.id} onClick={() => { runAsync('storage', toggleInGroup(group.id, post)); setGroupMenuOpen(false); }}>{selected && <Check size={10} />}{group.name}</button>; }) : <span>{postMessages.card.noFavoriteGroups}</span>}</div>}</div>
+          <div ref={groupMenuRef} className="card-group-control"><button title={postMessages.card.addToFavoriteGroup} aria-expanded={groupMenuOpen} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); setGroupMenuOpen((value) => !value); }}><FolderPlus size={14} /></button>{groupMenuOpen && <div className="card-group-menu" role="menu" onClick={(event) => event.stopPropagation()}>{groups.length ? groups.map((group) => { const selected = group.postKeys.includes(`${post.source}:${post.id}`); return <button role="menuitemcheckbox" aria-checked={selected} className={selected ? 'is-selected' : ''} key={group.id} onClick={() => { runAsync('storage', toggleInGroup(group.id, post)); setGroupMenuOpen(false); }}>{selected && <Check size={10} />}{group.name}</button>; }) : <span>{postMessages.card.noFavoriteGroups}</span>}</div>}</div>
           <DownloadMenu post={post} compact />
           <button className={isLocal ? 'is-local' : ''} title={isLocal ? postMessages.card.removeFromLocalFavorites : postMessages.card.saveToLocalFavorites} onClick={favorite}><Heart size={14} fill={isLocal ? 'currentColor' : 'none'} /></button>
         </div>
@@ -99,13 +102,13 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     </div>, document.body) : null;
 
   return (
-    <article className={`post-card thumbnail-container ${layout === 'list' ? 'post-card--list' : ''}`} data-post-id={post.id} data-post-url={postUrl} data-file-url={post.fileUrl} tabIndex={0} onMouseEnter={trackDwell} onMouseMove={trackDwell} onMouseLeave={scheduleClose} onClick={() => openDetail(post)} onKeyDown={(event) => event.key === 'Enter' && openDetail(post)}>
+    <article className={`post-card thumbnail-container ${layout === 'list' ? 'post-card--list' : ''}`} data-post-id={post.id} data-post-url={postUrl} data-file-url={post.fileUrl} onMouseEnter={trackDwell} onMouseMove={trackDwell} onMouseLeave={scheduleClose}>
       <button className={`post-select ${selected ? 'is-selected' : ''}`} title={selected ? postMessages.card.removeFromBatch : postMessages.card.addToBatch} aria-label={selected ? postMessages.card.removeFromBatch : postMessages.card.addToBatch} onClick={(event) => { event.stopPropagation(); toggleSelected(post); }}><Check size={13} /></button>
       <button className={`post-copy ${copied ? 'is-copied' : ''}`} title={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} aria-label={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} onClick={copyTags}>{copied ? <ClipboardCheck size={13} /> : <Copy size={13} />}</button>
       {downloaded && <span className="downloaded-badge" title={postMessages.card.previouslyDownloaded}><CircleCheck size={12} /> {postMessages.card.downloaded}</span>}
       <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.slice(0, 8).map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) || postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{post.status ?? 'active'}</dd></div></dl></div>}
-      <button className={`rating-badge rating-badge--${post.rating}`}>{post.rating}</button>
+      <span className={`rating-badge rating-badge--${post.rating}`} title={postMessages.card.rating(post.rating)}>{post.rating}</span>
       {tooltip}
     </article>
   );

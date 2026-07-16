@@ -21,6 +21,7 @@ export const shellMessages = {
     postsQueued: (count: number) => `${count} posts queued`,
     downloadFailed: 'Download failed',
     openSidebar: 'Open sidebar',
+    refreshing: 'Refreshing',
     loaded: 'loaded',
     selected: 'selected',
     downloadSelection: 'Download selection',
@@ -34,6 +35,7 @@ export const shellMessages = {
   sidebar: {
     browse: 'Browse',
     collapse: 'Collapse sidebar',
+    close: 'Close navigation',
     discover: 'Discover',
     topScored: 'Top scored',
     trending: 'Trending',
@@ -69,6 +71,8 @@ export const shellMessages = {
     after: 'After',
     minWidth: 'Min width',
     minHeight: 'Min height',
+    apply: 'Apply filters',
+    cancel: 'Cancel',
   },
   rating: {
     filters: 'Rating filters',

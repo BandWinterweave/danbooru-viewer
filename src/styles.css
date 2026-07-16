@@ -94,7 +94,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .search-clear { position: absolute; right: 75px; padding: 5px; border: 0; background: transparent; color: var(--muted); display: grid; cursor: pointer; }
 .suggestions { position: absolute; z-index: 50; top: 48px; right: 0; left: 0; padding: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); }
 .suggestions button { width: 100%; padding: 9px 10px; border: 0; border-radius: 3px; background: transparent; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; }
-.suggestions button:hover { background: var(--surface-soft); }
+.suggestions button:hover, .suggestions button.is-active { background: var(--surface-soft); }
 .suggestions span { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; }
 .suggestions button[data-category='general'] span { color: var(--tag-general); }
 .suggestions button[data-category='artist'] span { color: var(--tag-artist); }
@@ -118,6 +118,9 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .advanced-filter { position: absolute; z-index: 60; top: calc(100% + 1px); right: 20px; width: min(720px, calc(100vw - 40px)); padding: 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)); gap: 9px; }
 .advanced-filter label { display: grid; gap: 5px; color: var(--muted); font-family: Bahnschrift, "Arial Narrow", sans-serif; font-size: 10px; font-weight: 650; text-transform: uppercase; }
 .advanced-filter input, .advanced-filter select { width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 2px; background: var(--canvas); color: var(--ink); font-size: 12px; }
+.advanced-filter-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 7px; }
+.advanced-filter-actions button { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.advanced-filter-actions button[type='submit'] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
 
 .filter-row { min-height: 46px; border-bottom: 0; gap: 12px; }
 .filter-scroll { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
@@ -137,6 +140,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 .workspace { display: flex; min-height: calc(100vh - 174px); }
 .sidebar { position: sticky; top: 174px; width: 224px; height: calc(100vh - 174px); flex: 0 0 224px; padding: 20px 14px; border-right: 1px solid var(--ink); background: var(--surface); overflow-y: auto; }
+.sidebar-scrim { display: none; }
 .sidebar-heading { margin-bottom: 14px; padding: 0 6px 10px; border-bottom: 2px solid var(--green); display: flex; justify-content: space-between; align-items: center; color: var(--ink); font-family: Bahnschrift, "Arial Narrow", sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .sidebar-heading button { padding: 3px; border: 0; background: transparent; color: var(--muted); display: grid; cursor: pointer; }
 .side-nav { display: grid; gap: 3px; }
@@ -155,7 +159,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .quick-tag-form button { width: 28px; padding: 0; border: 1px solid var(--line); border-left: 0; border-radius: 0 3px 3px 0; display: grid; place-items: center; }
 .quick-tag-suggestions { position: absolute; z-index: 60; top: 100%; right: 0; left: 0; padding: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); }
 .quick-tag-suggestions button { width: 100%; padding: 9px 10px; border: 0; border-radius: 3px; background: transparent; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; }
-.quick-tag-suggestions button:hover { background: var(--surface-soft); }
+.quick-tag-suggestions button:hover, .quick-tag-suggestions button.is-active { background: var(--surface-soft); }
 .quick-tag-suggestions span { font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .quick-tag-suggestions button[data-category='general'] span { color: var(--tag-general); }
 .quick-tag-suggestions button[data-category='artist'] span { color: var(--tag-artist); }
@@ -197,6 +201,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .content-toolbar > div { display: flex; align-items: center; gap: 8px; }
 .result-count { color: var(--muted); font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace; font-size: 11px; font-weight: 600; }
 .result-count strong { color: var(--green); font-size: 14px; }
+.refresh-status { display: inline-flex; align-items: center; gap: 5px; color: var(--blue); font: 10px "Cascadia Mono", "Cascadia Code", Consolas, monospace; }
 .columns-control { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
 .columns-control input { width: 90px; accent-color: var(--green); }
 .columns-control output { width: 20px; color: var(--ink); font-family: "Cascadia Code", Consolas, monospace; }
@@ -216,7 +221,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .layout-list .post-image-link { width: clamp(180px, 28%, 310px); flex: 0 0 auto; background: var(--surface-soft); }
 .layout-list .post-image-link img, .layout-list .post-image-link video { object-fit: contain; }
 .post-card { position: relative; min-width: 0; aspect-ratio: 1 / 1.18; border: 1px solid color-mix(in srgb, var(--ink) 45%, var(--line)); border-radius: 2px; background: var(--surface-soft); overflow: hidden; contain: layout paint style; cursor: pointer; transition: border-color 180ms ease, background-color 180ms ease; }
-.post-card:focus-visible { border-color: var(--green); }
+.post-card:focus-within { border-color: var(--green); }
 .post-card:hover { border-color: var(--green); background: var(--green-soft); }
 .post-image-link { position: relative; width: 100%; height: 100%; display: block; overflow: hidden; }
 .post-image-link img, .post-image-link video, .media-image { width: 100%; height: 100%; display: block; object-fit: cover; }
@@ -246,7 +251,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .list-card-info dd { margin: 0; font: 9px "Cascadia Code", Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
 .post-card--list > .rating-badge { display: none; }
 .image-missing { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 11px; }
-.rating-badge { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; padding: 0; border: 1px solid rgb(255 255 255 / 65%); border-radius: 3px; display: grid; place-items: center; color: white; font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; font-weight: 800; text-transform: uppercase; box-shadow: 0 2px 8px rgb(0 0 0 / 20%); cursor: zoom-in; }
+.rating-badge { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; padding: 0; border: 1px solid rgb(255 255 255 / 65%); border-radius: 3px; display: grid; place-items: center; color: white; font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; font-weight: 800; text-transform: uppercase; box-shadow: 0 2px 8px rgb(0 0 0 / 20%); pointer-events: none; }
 .rating-badge--g, .rating-badge--s { background: #27765f; }
 .rating-badge--q { background: #a57218; }
 .rating-badge--e { background: #b94e3b; }
@@ -449,7 +454,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   .filter-scroll { min-height: 29px; }
   .filter-actions { justify-content: flex-end; }
   .workspace { min-height: calc(100vh - 224px); }
-  .sidebar { display: none; }
+  .sidebar { position: fixed; z-index: 72; top: 0; bottom: 0; left: 0; width: min(88vw, 340px); height: 100dvh; padding: 18px 16px 28px; border-right: 1px solid var(--ink); box-shadow: var(--shadow); }
+  .sidebar-scrim { position: fixed; z-index: 71; inset: 0; padding: 0; border: 0; background: rgb(10 15 13 / 52%); display: block; }
   .content-area { padding-right: 8px; padding-left: 8px; }
   .columns-control span, .columns-control input { display: none; }
   .post-grid { gap: 6px; }

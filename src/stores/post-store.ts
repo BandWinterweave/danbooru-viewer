@@ -54,10 +54,6 @@ function credentials(source: BooruSource = useSettingsStore.getState().activeSou
   return value?.username && value.apiKey ? { ...value } : undefined;
 }
 
-function sameQuery(left: SearchQuery, right: SearchQuery) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function isCurrentSession(session: SearchSession) {
   return activeSession?.id === session.id && useSettingsStore.getState().activeSource === session.source;
 }
@@ -168,7 +164,7 @@ export const usePostStore = create<PostStore>()(persist(
     search: async (query) => {
       const normalizedQuery = { ...query, page: 1, limit: query.limit ?? 40 };
       const source = useSettingsStore.getState().activeSource;
-      const phase = activeSession?.source === source && sameQuery(activeSession.query, normalizedQuery) && get().posts.length ? 'refresh' : 'initial';
+      const phase = activeSession?.source === source && get().posts.length ? 'refresh' : 'initial';
       await runSearch(normalizedQuery, phase);
     },
     cancelSearch: () => {

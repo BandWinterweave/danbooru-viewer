@@ -21,6 +21,8 @@ export const en = {
     errorTitle: (source: string) => `${source} could not be reached`,
     emptyTitle: 'No posts match this search',
     emptyBody: 'Remove a filter or try a broader tag.',
+    previewsHiddenTitle: 'All matching previews are hidden',
+    previewsHiddenBody: 'Show unavailable previews or adjust the current filters.',
     end: 'End of results',
     loadingMore: 'Loading more',
     crashedTitle: 'The viewer stopped unexpectedly',

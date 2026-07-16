@@ -71,15 +71,19 @@ export const test = base.extend<Fixtures>({
       apiRequests.push(url.toString());
       if (url.pathname.endsWith('/posts.json')) {
         const pageNumber = Number(url.searchParams.get('page') ?? '1');
-        const stress = url.searchParams.get('tags')?.includes('cache_stress');
+        const tags = url.searchParams.get('tags') ?? '';
+        const stress = tags.includes('cache_stress');
+        const unavailable = tags.includes('unavailable_preview');
         const items =
           stress && pageNumber <= 13
             ? Array.from({ length: 40 }, (_, index) => post((pageNumber - 1) * 40 + index + 1_000))
-            : pageNumber === 1
-              ? Array.from({ length: 40 }, (_, index) => post(index + 1))
-              : pageNumber === 2
-                ? [post(41), post(42)]
-                : [];
+            : unavailable && pageNumber === 1
+              ? [{ ...post(900), preview_file_url: null, large_file_url: null, file_url: null }]
+              : pageNumber === 1
+                ? Array.from({ length: 40 }, (_, index) => post(index + 1))
+                : pageNumber === 2
+                  ? [post(41), post(42)]
+                  : [];
         return route.fulfill({ json: items });
       }
       if (url.pathname.endsWith('/autocomplete.json')) {

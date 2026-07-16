@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, X } from 'lucide-react';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -64,6 +64,7 @@ export function PostDetail() {
   const credential = useSettingsStore((state) => state.credentials[post?.source ?? state.activeSource]);
   const detailImageQuality = useSettingsStore((state) => state.detailImageQuality);
   const isLocal = useFavoriteStore((state) => post ? state.isLocal(post) : false);
+  const favoritesHydrated = useFavoriteStore((state) => state.hydrated);
   const toggleLocal = useFavoriteStore((state) => state.toggleLocal);
   const toggleRemote = useFavoriteStore((state) => state.toggleRemote);
   const isRemote = useFavoriteStore((state) => post ? state.isRemote(post) : false);
@@ -78,6 +79,9 @@ export function PostDetail() {
   const [commentBody, setCommentBody] = useState('');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const access = post ? resolveSourceAccess(post.source, credential) : null;
   const adapter = access?.adapter ?? null;
   const authenticated = access?.authenticated ?? false;
@@ -94,13 +98,19 @@ export function PostDetail() {
 
   useEffect(() => {
     if (!open) return;
+    returnFocusRef.current = useUiStore.getState().detailTrigger;
     const rootOverflow = document.documentElement.style.overflow;
     const bodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.documentElement.style.overflow = rootOverflow;
       document.body.style.overflow = bodyOverflow;
+      const trigger = returnFocusRef.current;
+      window.requestAnimationFrame(() => trigger?.focus());
+      returnFocusRef.current = null;
     };
   }, [open]);
 
@@ -114,12 +124,29 @@ export function PostDetail() {
   const runAction = async (action: () => Promise<void>) => { setBusy(true); setActionError(''); try { await action(); } catch (error) { setActionError(error instanceof Error ? error.message : postMessages.detail.actionFailed); } finally { setBusy(false); } };
   const navigate = async (direction: -1 | 1) => { if (!post) return; const next = await navigateDetail(post, direction); if (next) useUiStore.getState().setCurrentPost(next); };
   const submitComment = (event: FormEvent) => { event.preventDefault(); if (!post || !adapter?.createComment || !credential || !commentBody.trim()) return; void runAction(async () => { const comment = await adapter.createComment!(post.id, commentBody.trim(), credential); setSubmittedComments((current) => ({ postKey: currentPostKey, items: current.postKey === currentPostKey ? [...current.items, comment] : [comment] })); setCommentBody(''); }); };
+  const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      if (dialogRef.current?.querySelector('[aria-expanded="true"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])]
+      .filter((element) => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
   if (!post) return null;
 
   return (
     <>
       <button className={`detail-scrim ${open ? 'is-open' : ''}`} aria-label={postMessages.detail.closeDetails} onClick={close} />
-      <div className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open}>
+      <div ref={dialogRef} className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open} aria-labelledby="post-detail-title" onKeyDown={trapFocus}>
         <section className="detail-media-stage" aria-label={postMessages.detail.postRecord}>
           <PostDetailMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} />
           <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title="Previous post" aria-label="Previous post" onClick={() => void navigate(-1)}><ArrowLeft size={20} /></button>
@@ -127,11 +154,11 @@ export function PostDetail() {
         </section>
       <aside className="detail-panel">
         <div className="detail-header">
-          <div><span>{postMessages.detail.postRecord}</span><h2>#{post.id}</h2></div>
-          <button className="icon-button" title={postMessages.detail.closeDetails} onClick={close}><X size={18} /></button>
+          <div><span>{postMessages.detail.postRecord}</span><h2 id="post-detail-title">#{post.id}</h2></div>
+          <button ref={closeButtonRef} className="icon-button" title={postMessages.detail.closeDetails} onClick={close}><X size={18} /></button>
         </div>
         <div className="detail-actions">
-          <button className={isLocal ? 'is-active' : ''} onClick={() => void runAction(() => toggleLocal(post))}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
+          <button className={isLocal ? 'is-active' : ''} disabled={!favoritesHydrated || busy} title={!favoritesHydrated ? postMessages.detail.favoritesLoading : undefined} onClick={() => void runAction(() => toggleLocal(post))}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
           <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite)} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite) ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post, access?.credentials))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
           <DownloadMenu post={post} />
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.upvote} onClick={() => void runAction(() => adapter!.vote!(post.id, 1, credential!))}><ArrowUp size={15} /></button>

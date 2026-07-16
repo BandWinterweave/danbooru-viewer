@@ -54,9 +54,10 @@ export function PostGrid() {
     scrollMargin: gridMetrics.top,
   });
 
-  if (isLoading) return <StatePanel icon={LoaderCircle} busy title={messages.states.loadingTitle} body={messages.states.loadingBody(source)} />;
+  if (isLoading && !posts.length) return <StatePanel icon={LoaderCircle} busy title={messages.states.loadingTitle} body={messages.states.loadingBody(source)} />;
   if (error && !posts.length) return <StatePanel icon={AlertCircle} tone="error" title={messages.states.errorTitle(source)} body={error} onRetry={() => void retry()} />;
   if (!posts.length) return <StatePanel icon={SearchX} title={messages.states.emptyTitle} body={messages.states.emptyBody} />;
+  if (!visiblePosts.length) return <StatePanel icon={SearchX} title={messages.states.previewsHiddenTitle} body={messages.states.previewsHiddenBody} />;
 
   return (
     <>

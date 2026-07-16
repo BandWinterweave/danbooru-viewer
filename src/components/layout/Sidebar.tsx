@@ -19,6 +19,7 @@ import { rememberTagMetadata, tagCategoryFor } from '../../services/booru-adapte
 export function Sidebar() {
   const open = useUiStore((state) => state.sidebarOpen);
   const toggle = useUiStore((state) => state.toggleSidebar);
+  const setOpen = useUiStore((state) => state.setSidebarOpen);
   const postCount = usePostStore((state) => state.posts.length);
   const addTag = useFilterStore((state) => state.addTagFilter);
   const setMeta = useFilterStore((state) => state.setMetaFilter);
@@ -39,7 +40,22 @@ export function Sidebar() {
   const [quickTag, setQuickTag] = useState('');
   const [quickTagSuggestions, setQuickTagSuggestions] = useState<TagAutocompleteResult[]>([]);
   const [quickTagDropdownOpen, setQuickTagDropdownOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const suggestionListId = 'quick-tag-suggestions';
   const submitQuickTag = (event: FormEvent) => { event.preventDefault(); addQuickTag(quickTag); setQuickTag(''); };
+
+  useEffect(() => {
+    if (window.matchMedia?.('(max-width: 720px)').matches) setOpen(false);
+  }, [setOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !quickTagDropdownOpen) setOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [open, quickTagDropdownOpen, setOpen]);
 
   useEffect(() => {
     const term = quickTag.trim();
@@ -48,7 +64,7 @@ export function Sidebar() {
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions(source, term);
       if (cancelled) return;
-      if (cached?.items.length) { setQuickTagSuggestions(cached.items); setQuickTagDropdownOpen(true); }
+      if (cached?.items.length) { setQuickTagSuggestions(cached.items); setQuickTagDropdownOpen(true); setActiveSuggestion(0); }
       if (cached && !cached.stale) return;
       try {
         const result = await getBooruAdapter(source).autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
@@ -56,17 +72,30 @@ export function Sidebar() {
           cacheSuggestions(source, term, result),
           rememberTagMetadata(source, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
-        if (!cancelled) { setQuickTagSuggestions(result); setQuickTagDropdownOpen(true); }
+        if (!cancelled) { setQuickTagSuggestions(result); setQuickTagDropdownOpen(true); setActiveSuggestion(result.length ? 0 : -1); }
       } catch {
         if (!cancelled && !cached) setQuickTagSuggestions([]);
       }
-    }, 150);
+    }, 350);
     return () => { cancelled = true; window.clearTimeout(timeout); };
   }, [source, credentials, quickTag]);
 
   const selectQuickTagSuggestion = (name: string) => {
     setQuickTag(name);
     setQuickTagDropdownOpen(false);
+    setActiveSuggestion(-1);
+  };
+  const navigateQuickTagSuggestions = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') { setQuickTagDropdownOpen(false); setActiveSuggestion(-1); return; }
+    if (!quickTagDropdownOpen || !quickTagSuggestions.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveSuggestion((current) => (current + direction + quickTagSuggestions.length) % quickTagSuggestions.length);
+    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
+      event.preventDefault();
+      selectQuickTagSuggestion(quickTagSuggestions[activeSuggestion].name);
+    }
   };
   const importFavorites = async (file: File) => {
     try {
@@ -78,8 +107,10 @@ export function Sidebar() {
   };
   if (!open) return null;
   return (
-    <aside className="sidebar">
-      <div className="sidebar-heading"><span>{shellMessages.sidebar.browse}</span><button title={shellMessages.sidebar.collapse} onClick={toggle}><PanelLeftClose size={16} /></button></div>
+    <>
+    <button className="sidebar-scrim" aria-label={shellMessages.sidebar.close} onClick={() => setOpen(false)} />
+    <aside className="sidebar" aria-label={shellMessages.sidebar.browse}>
+      <div className="sidebar-heading"><span>{shellMessages.sidebar.browse}</span><button title={shellMessages.sidebar.collapse} aria-label={shellMessages.sidebar.close} onClick={toggle}><PanelLeftClose size={16} /></button></div>
       <nav className="side-nav">
          <button className="is-current"><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
          <button onClick={() => setMeta({ order: 'score' })}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
@@ -89,11 +120,11 @@ export function Sidebar() {
       <div className="sidebar-section">
         <h2>{shellMessages.sidebar.quickTags}</h2>
         <div className="quick-tag-form-wrapper">
-          <form className="quick-tag-form" onSubmit={submitQuickTag}><input ref={quickTagInputRef} value={quickTag} placeholder={shellMessages.sidebar.addTagPlaceholder} aria-label={shellMessages.sidebar.newQuickTag} autoComplete="off" spellCheck={false} onChange={(event) => setQuickTag(event.target.value)} onFocus={() => setQuickTagDropdownOpen(quickTagSuggestions.length > 0)} onBlur={() => window.setTimeout(() => setQuickTagDropdownOpen(false), 120)} /><button title={shellMessages.sidebar.addQuickTag} disabled={!quickTag.trim()}><Plus size={12} /></button></form>
+          <form className="quick-tag-form" onSubmit={submitQuickTag}><input ref={quickTagInputRef} value={quickTag} placeholder={shellMessages.sidebar.addTagPlaceholder} aria-label={shellMessages.sidebar.newQuickTag} autoComplete="off" spellCheck={false} role="combobox" aria-autocomplete="list" aria-expanded={quickTagDropdownOpen && quickTagSuggestions.length > 0} aria-controls={suggestionListId} aria-activedescendant={quickTagDropdownOpen && activeSuggestion >= 0 ? `${suggestionListId}-${activeSuggestion}` : undefined} onKeyDown={navigateQuickTagSuggestions} onChange={(event) => setQuickTag(event.target.value)} onFocus={() => setQuickTagDropdownOpen(quickTagSuggestions.length > 0)} onBlur={() => window.setTimeout(() => setQuickTagDropdownOpen(false), 120)} /><button title={shellMessages.sidebar.addQuickTag} disabled={!quickTag.trim()}><Plus size={12} /></button></form>
           {quickTagDropdownOpen && quickTagSuggestions.length > 0 && (
-            <div className="quick-tag-suggestions" role="listbox">
-              {quickTagSuggestions.map((suggestion) => (
-                <button type="button" role="option" data-category={suggestion.category} key={suggestion.name} onMouseDown={() => selectQuickTagSuggestion(suggestion.name)}>
+            <div className="quick-tag-suggestions" id={suggestionListId} role="listbox">
+              {quickTagSuggestions.map((suggestion, index) => (
+                <button type="button" id={`${suggestionListId}-${index}`} role="option" aria-selected={activeSuggestion === index} className={activeSuggestion === index ? 'is-active' : ''} data-category={suggestion.category} key={suggestion.name} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={() => selectQuickTagSuggestion(suggestion.name)}>
                   <span>{suggestion.name.replaceAll('_', ' ')}</span>
                   <small>{suggestion.postCount.toLocaleString()}</small>
                 </button>
@@ -108,5 +139,6 @@ export function Sidebar() {
       <FavoriteGroups />
       <div className="sidebar-section favorite-library"><h2>{shellMessages.sidebar.recentSaves}</h2><div className="favorite-list">{favorites.slice(0, 5).map((post) => <button key={`${post.source}:${post.id}`} onClick={() => openDetail(post)}><CachedImage src={displayImageUrl(post.previewUrl)} alt="" /><span>#{post.id}<small>{post.source}</small></span></button>)}</div><div className="sidebar-file-actions"><button title={shellMessages.sidebar.exportFavorites} onClick={exportJson}><Download size={13} /> {shellMessages.sidebar.export}</button><button title={shellMessages.sidebar.importFavorites} onClick={() => fileRef.current?.click()}><Upload size={13} /> {shellMessages.sidebar.import}</button></div><input ref={fileRef} hidden type="file" accept="application/json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFavorites(file); event.target.value = ''; }} /></div>
     </aside>
+    </>
   );
 }

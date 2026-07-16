@@ -19,7 +19,9 @@ export function SearchBar() {
   const credentials = useSettingsStore((state) => state.credentials[state.activeSource]);
   const [suggestions, setSuggestions] = useState<TagAutocompleteResult[]>([]);
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listboxId = 'main-search-suggestions';
 
   useEffect(() => {
     const lastTerm = searchText.trim().split(/\s+/).at(-1)?.replace(/^-/, '') ?? '';
@@ -28,7 +30,7 @@ export function SearchBar() {
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions(activeSource, lastTerm);
       if (cancelled) return;
-      if (cached?.items.length) { setSuggestions(cached.items); setOpen(true); }
+       if (cached?.items.length) { setSuggestions(cached.items); setOpen(true); setActiveIndex(0); }
       if (cached && !cached.stale) return;
       try {
         const result = await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
@@ -36,11 +38,11 @@ export function SearchBar() {
           cacheSuggestions(activeSource, lastTerm, result),
           rememberTagMetadata(activeSource, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
-        if (!cancelled) { setSuggestions(result); setOpen(true); }
+        if (!cancelled) { setSuggestions(result); setOpen(true); setActiveIndex(result.length ? 0 : -1); }
       } catch {
         if (!cancelled && !cached) setSuggestions([]);
       }
-    }, 150);
+    }, 350);
     return () => { cancelled = true; window.clearTimeout(timeout); };
   }, [activeSource, credentials, searchText]);
 
@@ -57,6 +59,20 @@ export function SearchBar() {
     terms[terms.length - 1] = `${excluded ? '-' : ''}${name}`;
     addSearchFilters(terms.join(' '));
     setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const navigateSuggestions = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') { setOpen(false); setActiveIndex(-1); return; }
+    if (!suggestions.length || !open) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveIndex((current) => (current + direction + suggestions.length) % suggestions.length);
+    } else if (event.key === 'Enter' && activeIndex >= 0) {
+      event.preventDefault();
+      selectSuggestion(suggestions[activeIndex].name);
+    }
   };
 
   return (
@@ -72,13 +88,19 @@ export function SearchBar() {
         placeholder={shellMessages.search.placeholder}
         autoComplete="off"
         spellCheck={false}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open && suggestions.length > 0}
+        aria-controls={listboxId}
+        aria-activedescendant={open && activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
+        onKeyDown={navigateSuggestions}
       />
       {searchText && <button type="button" className="search-clear" title={shellMessages.search.clear} onClick={() => { setSearchText(''); inputRef.current?.focus(); }}><X size={16} /></button>}
       <button type="submit" className="search-submit">{shellMessages.search.submit}</button>
       {open && suggestions.length > 0 && (
-        <div className="suggestions" role="listbox">
-          {suggestions.map((suggestion) => (
-            <button type="button" role="option" data-category={suggestion.category} key={suggestion.name} onMouseDown={() => selectSuggestion(suggestion.name)}>
+        <div className="suggestions" id={listboxId} role="listbox">
+          {suggestions.map((suggestion, index) => (
+            <button type="button" id={`${listboxId}-${index}`} role="option" aria-selected={activeIndex === index} className={activeIndex === index ? 'is-active' : ''} data-category={suggestion.category} key={suggestion.name} onMouseEnter={() => setActiveIndex(index)} onMouseDown={() => selectSuggestion(suggestion.name)}>
               <span>{suggestion.name.replaceAll('_', ' ')}</span>
               <small>{suggestion.postCount.toLocaleString()}</small>
             </button>

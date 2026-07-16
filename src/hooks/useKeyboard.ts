@@ -30,7 +30,13 @@ export function useKeyboard() {
         if (selected.length) runAsync('download', downloadPosts(selected, 'full', settings.downloadRule));
         return;
       }
-      if (key === 'escape') { if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
+      if (key === 'escape') {
+        if (ui.detailOpen) ui.closeDetail();
+        else if (ui.advancedFiltersOpen) ui.closeAdvancedFilters();
+        else if (ui.sidebarOpen) ui.setSidebarOpen(false);
+        else useFilterStore.getState().clearAll();
+        return;
+      }
       if (key === 'f' && current) { runAsync('storage', useFavoriteStore.getState().toggleLocal(current)); return; }
       if (key === 'd' && current && ui.detailOpen) { runAsync('download', downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule)); return; }
       if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen) {

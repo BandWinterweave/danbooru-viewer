@@ -220,15 +220,15 @@ describe('post store pagination', () => {
     expect(usePostStore.getState()).toMatchObject({ posts: [post(1), post(2)], loadingPhase: 'idle' });
   });
 
-  it('keeps existing posts visible during a same-session refresh', async () => {
+  it('keeps existing posts visible when filters refresh the same source', async () => {
     const refresh = deferred<PaginatedResult<UnifiedPost>>();
     mocks.searchPosts
       .mockImplementationOnce((query: SearchQuery) => Promise.resolve(page(query, [post(1)], true)))
       .mockImplementationOnce((_query: SearchQuery, _credentials: unknown, signal?: AbortSignal) => abortable(refresh, signal));
     await usePostStore.getState().search({ tags: 'refresh' });
 
-    const request = usePostStore.getState().search({ tags: 'refresh' });
-    expect(usePostStore.getState()).toMatchObject({ posts: [post(1)], loadingPhase: 'refresh', isLoading: true });
+    const request = usePostStore.getState().search({ tags: 'changed-filter' });
+    expect(usePostStore.getState()).toMatchObject({ posts: [post(1)], query: { tags: 'changed-filter' }, loadingPhase: 'refresh', isLoading: true });
     refresh.resolve(page({ page: 1 }, [post(2)], false));
     await request;
 
