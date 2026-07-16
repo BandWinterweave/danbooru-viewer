@@ -1,3 +1,5 @@
+import { actionMessages } from '../i18n/en-actions';
+
 const enhanced = new WeakSet<Element>();
 
 function enhancePost(element: Element) {
@@ -12,11 +14,11 @@ function enhancePost(element: Element) {
   actions.className = 'dv-post-actions';
   const copy = document.createElement('button');
   copy.type = 'button';
-  copy.textContent = 'Copy tags';
-  copy.title = 'Copy this post\'s tags';
+  copy.textContent = actionMessages.content.copyTags;
+  copy.title = actionMessages.content.copyTagsTitle;
   copy.addEventListener('click', (event) => {
     event.preventDefault(); event.stopPropagation();
-    void navigator.clipboard.writeText(tags.trim()).then(() => { copy.textContent = 'Copied'; window.setTimeout(() => { copy.textContent = 'Copy tags'; }, 1200); });
+    void navigator.clipboard.writeText(tags.trim()).then(() => { copy.textContent = actionMessages.content.copied; window.setTimeout(() => { copy.textContent = actionMessages.content.copyTags; }, 1200); });
   });
   actions.append(copy);
   element.append(actions);

@@ -18,10 +18,26 @@ const developmentProxy: Record<string, string> = {
   'https://api.rule34.xxx': 'rule34',
 };
 
+const pendingGetRequests = new Map<string, Promise<unknown>>();
+
 export async function apiRequest<T>(url: URL, options: { method?: 'GET' | 'POST' | 'DELETE'; credentials?: Credentials; body?: URLSearchParams | Record<string, unknown> } = {}): Promise<T> {
   const method = options.method ?? 'GET';
   const body = options.body instanceof URLSearchParams ? options.body.toString() : options.body ? JSON.stringify(options.body) : undefined;
-  const headers = { ...authHeaders(options.credentials), ...(options.body instanceof URLSearchParams ? { 'Content-Type': 'application/x-www-form-urlencoded' } : options.body ? { 'Content-Type': 'application/json' } : {}) };
+  const headers: Record<string, string> = { ...authHeaders(options.credentials), ...(options.body instanceof URLSearchParams ? { 'Content-Type': 'application/x-www-form-urlencoded' } : options.body ? { 'Content-Type': 'application/json' } : {}) };
+  const requestKey = `${method}:${url.toString()}:${headers.Authorization ?? 'public'}:${body ?? ''}`;
+  if (method === 'GET') {
+    const pending = pendingGetRequests.get(requestKey);
+    if (pending) return pending as Promise<T>;
+  }
+  const request = performRequest<T>(url, method, headers, body);
+  if (method === 'GET') {
+    pendingGetRequests.set(requestKey, request);
+    void request.finally(() => pendingGetRequests.delete(requestKey)).catch(() => undefined);
+  }
+  return request;
+}
+
+async function performRequest<T>(url: URL, method: 'GET' | 'POST' | 'DELETE', headers: Record<string, string>, body?: string): Promise<T> {
   const message: ApiProxyRequest = {
     type: 'API_REQUEST',
     payload: { url: url.toString(), method, headers, body },

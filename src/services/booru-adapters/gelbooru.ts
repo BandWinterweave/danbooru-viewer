@@ -22,7 +22,12 @@ interface GelbooruRawPost {
 
 const ratingMap: Record<string, Rating> = { general: 'g', safe: 's', sensitive: 's', questionable: 'q', explicit: 'e', g: 'g', s: 's', q: 'q', e: 'e' };
 const sourceBases: Partial<Record<BooruSource, string>> = { gelbooru: 'https://gelbooru.com', safebooru: 'https://safebooru.org', rule34: 'https://api.rule34.xxx' };
-const absoluteUrl = (value: string | undefined, source: BooruSource) => value ? new URL(value, sourceBases[source]).toString() : '';
+const absoluteUrl = (value: string | undefined, source: BooruSource) => {
+  if (!value) return '';
+  const url = new URL(value, sourceBases[source]);
+  if (url.protocol === 'http:') url.protocol = 'https:';
+  return url.toString();
+};
 
 export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource): UnifiedPost {
   const tagString = raw.tags ?? '';

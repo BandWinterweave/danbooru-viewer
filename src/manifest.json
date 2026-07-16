@@ -1,9 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Danbooru Viewer",
-  "description": "A focused new-tab browser for Danbooru.",
+  "name": "__MSG_extensionName__",
+  "description": "__MSG_extensionDescription__",
   "version": "0.1.0",
-  "permissions": ["storage", "downloads", "unlimitedStorage"],
+  "default_locale": "en",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["storage", "downloads", "unlimitedStorage", "scripting", "declarativeNetRequestWithHostAccess"],
   "host_permissions": [
     "https://*.donmai.us/*",
     "https://gelbooru.com/*",
@@ -12,6 +19,15 @@
     "https://*.yande.re/*",
     "https://*.rule34.xxx/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "gelbooru_media_headers",
+        "enabled": true,
+        "path": "rules/gelbooru-media.json"
+      }
+    ]
+  },
   "chrome_url_overrides": {
     "newtab": "src/newtab/index.html"
   },
@@ -26,7 +42,11 @@
   }],
   "action": {
     "default_popup": "src/popup/index.html",
-    "default_title": "Danbooru Viewer"
+    "default_title": "Danbooru Viewer",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   },
   "options_ui": {
     "page": "src/options/index.html",
@@ -35,7 +55,13 @@
   "commands": {
     "toggle-slideshow": {
       "suggested_key": { "default": "Ctrl+Shift+S", "mac": "Command+Shift+S" },
-      "description": "Toggle slideshow"
+      "description": "__MSG_toggleSlideshow__"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "danbooru-viewer@example.com",
+      "strict_min_version": "109.0"
     }
   }
 }

@@ -17,6 +17,11 @@
   --amber: #9b6b16;
   --amber-soft: #f5e9cc;
   --blue: #386a8c;
+  --tag-general: #0877df;
+  --tag-artist: #c52aa3;
+  --tag-character: #168b4d;
+  --tag-copyright: #7756bd;
+  --tag-meta: #bf6516;
   --shadow: 0 18px 48px rgb(23 32 30 / 12%);
 }
 
@@ -35,6 +40,11 @@
   --amber: #d9ac57;
   --amber-soft: #44371f;
   --blue: #7ab0d3;
+  --tag-general: #6bbcff;
+  --tag-artist: #f287d5;
+  --tag-character: #5bd58b;
+  --tag-copyright: #b69af4;
+  --tag-meta: #f0a15b;
   --shadow: 0 18px 48px rgb(0 0 0 / 35%);
 }
 
@@ -45,6 +55,8 @@ button, input, select { font: inherit; letter-spacing: 0; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .45; }
+::selection { background: var(--green-soft); color: var(--ink); }
+* { scrollbar-color: var(--line) transparent; }
 
 .app-shell { min-height: 100vh; }
 .app-header { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px); }
@@ -80,11 +92,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .suggestions button { width: 100%; padding: 9px 10px; border: 0; border-radius: 3px; background: transparent; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; }
 .suggestions button:hover { background: var(--surface-soft); }
 .suggestions span { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; }
-.suggestions button[data-category='general'] span { color: #0877df; }
-.suggestions button[data-category='artist'] span { color: #c52aa3; }
-.suggestions button[data-category='character'] span { color: #168b4d; }
-.suggestions button[data-category='copyright'] span { color: #7756bd; }
-.suggestions button[data-category='meta'] span { color: #bf6516; }
+.suggestions button[data-category='general'] span { color: var(--tag-general); }
+.suggestions button[data-category='artist'] span { color: var(--tag-artist); }
+.suggestions button[data-category='character'] span { color: var(--tag-character); }
+.suggestions button[data-category='copyright'] span { color: var(--tag-copyright); }
+.suggestions button[data-category='meta'] span { color: var(--tag-meta); }
 .suggestions small { color: var(--muted); }
 .rating-toggle { display: flex; gap: 5px; }
 .rating-button { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; cursor: pointer; }
@@ -185,6 +197,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .post-card { position: relative; min-width: 0; aspect-ratio: 1 / 1.18; border-radius: 4px; background: var(--surface-soft); overflow: hidden; cursor: pointer; }
 .post-image-link { width: 100%; height: 100%; display: block; }
 .post-image-link img, .post-image-link video, .media-image { width: 100%; height: 100%; display: block; object-fit: cover; }
+.image-cache-loading { width: 100%; height: 100%; display: block; background: linear-gradient(100deg, var(--surface-soft) 25%, var(--canvas) 42%, var(--surface-soft) 58%); background-size: 220% 100%; animation: cache-shimmer 1.15s ease-in-out infinite; }
 .post-image-link img { transition: transform 280ms ease; }
 .post-card:hover .post-image-link img { transform: scale(1.035); }
 .media-image { position: relative; }
@@ -199,11 +212,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .list-rating { padding: 3px 5px; border-radius: 3px; background: var(--surface-soft); font-size: 8px; font-weight: 800; }
 .list-card-info p { margin: 0; font: 10px/1.5 "Cascadia Code", Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-card-info p span:not(:last-child)::after { content: ' · '; color: var(--muted); }
-.list-card-info p span[data-category='general'] { color: #0877df; }
-.list-card-info p span[data-category='artist'] { color: #c52aa3; }
-.list-card-info p span[data-category='character'] { color: #168b4d; }
-.list-card-info p span[data-category='copyright'] { color: #7756bd; }
-.list-card-info p span[data-category='meta'] { color: #bf6516; }
+.list-card-info p span[data-category='general'] { color: var(--tag-general); }
+.list-card-info p span[data-category='artist'] { color: var(--tag-artist); }
+.list-card-info p span[data-category='character'] { color: var(--tag-character); }
+.list-card-info p span[data-category='copyright'] { color: var(--tag-copyright); }
+.list-card-info p span[data-category='meta'] { color: var(--tag-meta); }
 .list-card-info dl { margin: auto 0 0; display: grid; grid-template-columns: repeat(6, minmax(70px, 1fr)); gap: 10px; }
 .list-card-info dl div { min-width: 0; display: grid; gap: 4px; }
 .list-card-info dt { color: var(--muted); font-size: 8px; text-transform: uppercase; }
@@ -242,11 +255,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .card-group-menu > span { padding: 5px; display: block; color: var(--muted); font-size: 8px; }
 .post-tooltip-tags { max-height: 166px; padding: 7px 9px 9px; display: flex; align-content: flex-start; flex-wrap: wrap; gap: 2px 7px; overflow-y: auto; scrollbar-width: thin; }
 .tooltip-tag { min-width: 0; display: inline-flex; align-items: center; }
-.tooltip-tag-name { padding: 1px 0; border: 0; background: transparent; color: #0877df; font-family: "Cascadia Code", Consolas, monospace; font-size: 9px; line-height: 1.35; cursor: pointer; }
-.tooltip-tag[data-category='artist'] .tooltip-tag-name { color: #c52aa3; }
-.tooltip-tag[data-category='character'] .tooltip-tag-name { color: #168b4d; }
-.tooltip-tag[data-category='copyright'] .tooltip-tag-name { color: #7756bd; }
-.tooltip-tag[data-category='meta'] .tooltip-tag-name { color: #bf6516; }
+.tooltip-tag-name { padding: 1px 0; border: 0; background: transparent; color: var(--tag-general); font-family: "Cascadia Code", Consolas, monospace; font-size: 9px; line-height: 1.35; cursor: pointer; }
+.tooltip-tag[data-category='artist'] .tooltip-tag-name { color: var(--tag-artist); }
+.tooltip-tag[data-category='character'] .tooltip-tag-name { color: var(--tag-character); }
+.tooltip-tag[data-category='copyright'] .tooltip-tag-name { color: var(--tag-copyright); }
+.tooltip-tag[data-category='meta'] .tooltip-tag-name { color: var(--tag-meta); }
 .tooltip-tag-actions { width: 0; flex: 0 0 0; display: inline-flex; overflow: hidden; opacity: 0; transition: width 120ms ease, flex-basis 120ms ease, opacity 100ms ease; }
 .tooltip-tag:hover .tooltip-tag-actions, .tooltip-tag:focus-within .tooltip-tag-actions { width: 30px; flex-basis: 30px; opacity: 1; }
 .tooltip-tag-actions button { width: 15px; height: 17px; flex: 0 0 15px; padding: 0; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; opacity: 0; pointer-events: none; transform: translateX(-3px) scale(.8); transition: opacity 100ms ease, transform 100ms ease; }
@@ -254,12 +267,38 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .tooltip-tag-actions button:hover { color: var(--ink); }
 .load-sentinel { min-height: 72px; display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); font-size: 11px; }
 .inline-error { color: var(--coral); }
-.state-panel { min-height: 55vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
-.state-panel strong { margin-top: 12px; color: var(--ink); font-size: 15px; }
-.state-panel span { max-width: 440px; margin-top: 5px; font-size: 11px; line-height: 1.5; }
-.state-panel--error svg { color: var(--coral); }
+.state-panel { min-height: 55vh; padding: 48px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+.state-panel-mark { position: relative; width: 54px; height: 54px; margin-bottom: 16px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--green); }
+.state-panel-mark::before, .state-panel-mark::after { content: ''; position: absolute; background: var(--line); }
+.state-panel-mark::before { top: 50%; right: calc(100% + 8px); width: 34px; height: 1px; }
+.state-panel-mark::after { top: 50%; left: calc(100% + 8px); width: 34px; height: 1px; }
+.state-panel-mark--busy svg { animation: spin 900ms linear infinite; }
+.state-panel strong { margin-top: 8px; color: var(--ink); font-size: 16px; }
+.state-panel > span:not(.state-kicker) { max-width: 440px; margin-top: 6px; font-size: 11px; line-height: 1.55; }
+.state-panel--error .state-panel-mark { border-color: color-mix(in srgb, var(--coral) 60%, var(--line)); color: var(--coral); }
+.state-kicker { color: var(--muted); font: 8px "Cascadia Code", Consolas, monospace; letter-spacing: 0; }
+.state-action { height: 34px; margin-top: 18px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 4px; background: var(--ink); color: var(--surface); display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; cursor: pointer; }
+.inline-retry { height: 27px; padding: 0 8px; border: 1px solid var(--coral); border-radius: 3px; background: var(--coral-soft); color: var(--coral); font-size: 9px; cursor: pointer; }
+.fatal-state { min-height: 100vh; padding: 32px; background: var(--canvas); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+.fatal-state-mark { width: 58px; height: 58px; margin-bottom: 17px; border: 1px solid var(--coral); display: grid; place-items: center; color: var(--coral); }
+.fatal-state h1 { margin: 9px 0 0; color: var(--ink); font-size: 22px; }
+.fatal-state p { max-width: 430px; margin: 8px 0 0; font-size: 12px; line-height: 1.6; }
+.toast-viewport { position: fixed; z-index: 120; right: 16px; bottom: 16px; width: min(350px, calc(100vw - 24px)); display: grid; gap: 7px; pointer-events: none; }
+.toast { position: relative; min-height: 64px; padding: 12px 38px 12px 13px; border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 5px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 16px 42px rgb(15 23 20 / 18%); backdrop-filter: blur(12px); display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; align-items: start; pointer-events: auto; animation: toast-enter 220ms cubic-bezier(.2,.8,.2,1) both; }
+.toast--success { border-left-color: var(--green); }
+.toast--warning { border-left-color: var(--amber); }
+.toast--error { border-left-color: var(--coral); }
+.toast-icon { width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 3px; display: grid; place-items: center; color: var(--blue); }
+.toast--success .toast-icon { color: var(--green); }
+.toast--warning .toast-icon { color: var(--amber); }
+.toast--error .toast-icon { color: var(--coral); }
+.toast strong { display: block; color: var(--ink); font-size: 11px; line-height: 1.3; }
+.toast p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.toast > button { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; padding: 0; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .spin { animation: spin 800ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes cache-shimmer { to { background-position-x: -220%; } }
+@keyframes toast-enter { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 
 .detail-scrim { position: fixed; z-index: 39; inset: 0; border: 0; background: rgb(10 15 13 / 34%); opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
 .detail-scrim.is-open { opacity: 1; pointer-events: auto; }
@@ -305,11 +344,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .detail-tag button { height: 100%; padding: 0 6px; border: 0; border-left: 1px solid var(--line); background: transparent; display: grid; place-items: center; color: var(--muted); cursor: pointer; }
 .detail-tag .tag-name { max-width: 240px; border-left: 0; color: var(--ink); font-family: "Cascadia Code", Consolas, monospace; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail-tag button:hover { background: var(--surface-soft); color: var(--green); }
-.tag-group--general .tag-name { color: #0877df; }
-.tag-group--artist .tag-name { color: #c52aa3; }
-.tag-group--character .tag-name { color: #168b4d; }
-.tag-group--copyright .tag-name { color: #7756bd; }
-.tag-group--meta .tag-name { color: #bf6516; }
+.tag-group--general .tag-name { color: var(--tag-general); }
+.tag-group--artist .tag-name { color: var(--tag-artist); }
+.tag-group--character .tag-name { color: var(--tag-character); }
+.tag-group--copyright .tag-name { color: var(--tag-copyright); }
+.tag-group--meta .tag-name { color: var(--tag-meta); }
 .comments-section { margin: 0 18px; padding: 16px 0; border-top: 1px solid var(--line); }
 .comments-section > h3 { margin: 0 0 10px; display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; }
 .comments-section > p { color: var(--muted); font-size: 10px; }
@@ -325,11 +364,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .related-content h3 { margin: 0 0 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .related-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .related-tags button, .related-content section > a { min-height: 25px; padding: 0 7px; border: 1px solid var(--line); border-radius: 3px; background: transparent; color: var(--blue); display: inline-flex; align-items: center; gap: 6px; font: 9px "Cascadia Code", Consolas, monospace; text-decoration: none; cursor: pointer; }
-.related-tags button[data-category='general'] { color: #0877df; }
-.related-tags button[data-category='artist'] { color: #c52aa3; }
-.related-tags button[data-category='character'] { color: #168b4d; }
-.related-tags button[data-category='copyright'] { color: #7756bd; }
-.related-tags button[data-category='meta'] { color: #bf6516; }
+.related-tags button[data-category='general'] { color: var(--tag-general); }
+.related-tags button[data-category='artist'] { color: var(--tag-artist); }
+.related-tags button[data-category='character'] { color: var(--tag-character); }
+.related-tags button[data-category='copyright'] { color: var(--tag-copyright); }
+.related-tags button[data-category='meta'] { color: var(--tag-meta); }
 .related-content section > a span { color: var(--muted); }
 .relation-posts { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .relation-posts button { position: relative; aspect-ratio: 1; padding: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; cursor: pointer; }
@@ -410,6 +449,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   .detail-image { height: 280px; }
   .advanced-filter { right: 10px; width: calc(100vw - 20px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-section { grid-template-columns: 1fr; gap: 20px; }
+  .toast-viewport { right: 8px; bottom: 8px; width: calc(100vw - 16px); }
+  .state-panel { min-height: 48vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {

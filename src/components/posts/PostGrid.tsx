@@ -5,6 +5,8 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { PostCard } from './PostCard';
+import { StatePanel } from '../feedback/StatePanel';
+import { messages } from '../../i18n/en';
 
 export function PostGrid() {
   const posts = usePostStore((state) => state.posts);
@@ -13,6 +15,7 @@ export function PostGrid() {
   const hasMore = usePostStore((state) => state.hasMore);
   const error = usePostStore((state) => state.error);
   const loadMore = usePostStore((state) => state.loadMore);
+  const retry = usePostStore((state) => state.retry);
   const columns = useSettingsStore((state) => state.columns);
   const layout = useSettingsStore((state) => state.layout);
   const source = useSettingsStore((state) => state.activeSource);
@@ -35,9 +38,9 @@ export function PostGrid() {
     scrollMargin: gridRef.current ? gridRef.current.getBoundingClientRect().top + window.scrollY : 0,
   });
 
-  if (isLoading) return <div className="state-panel"><LoaderCircle className="spin" size={25} /><strong>Reading the index</strong><span>Fetching the latest {source} posts...</span></div>;
-  if (error && !posts.length) return <div className="state-panel state-panel--error"><AlertCircle size={25} /><strong>{source} could not be reached</strong><span>{error}</span></div>;
-  if (!posts.length) return <div className="state-panel"><SearchX size={25} /><strong>No posts match this search</strong><span>Remove a filter or try a broader tag.</span></div>;
+  if (isLoading) return <StatePanel icon={LoaderCircle} busy title={messages.states.loadingTitle} body={messages.states.loadingBody(source)} />;
+  if (error && !posts.length) return <StatePanel icon={AlertCircle} tone="error" title={messages.states.errorTitle(source)} body={error} onRetry={() => void retry()} />;
+  if (!posts.length) return <StatePanel icon={SearchX} title={messages.states.emptyTitle} body={messages.states.emptyBody} />;
 
   return (
     <>
@@ -52,9 +55,9 @@ export function PostGrid() {
         })}
       </div>
       <div ref={sentinel} className="load-sentinel">
-        {isLoadingMore && <><LoaderCircle className="spin" size={18} /> Loading more</>}
-        {!hasMore && <span>End of results</span>}
-        {error && posts.length > 0 && <span className="inline-error">{error}</span>}
+         {isLoadingMore && <><LoaderCircle className="spin" size={18} /> {messages.states.loadingMore}</>}
+         {!hasMore && <span>{messages.states.end}</span>}
+         {error && posts.length > 0 && <><span className="inline-error">{error}</span><button className="inline-retry" onClick={() => void loadMore()}>{messages.actions.retry}</button></>}
       </div>
     </>
   );

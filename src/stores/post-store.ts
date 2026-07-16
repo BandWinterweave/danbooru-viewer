@@ -5,6 +5,9 @@ import type { SearchQuery } from '../types/api';
 import type { UnifiedPost } from '../types/post';
 import { useSettingsStore } from './settings-store';
 import { extensionStorage } from './storage';
+import { messages } from '../i18n/en';
+import { notify } from '../services/notifications';
+import { ApiRequestError } from '../services/api/client';
 
 interface PostStore {
   posts: UnifiedPost[];
@@ -17,6 +20,7 @@ interface PostStore {
   selectedPostKeys: string[];
   search: (query: SearchQuery) => Promise<void>;
   loadMore: () => Promise<void>;
+  retry: () => Promise<void>;
   toggleSelected: (post: UnifiedPost) => void;
   selectAll: () => void;
   clearSelection: () => void;
@@ -44,17 +48,23 @@ export const usePostStore = create<PostStore>()(persist(
     selectedPostKeys: [],
     search: async (query) => {
       const requestId = ++requestSequence;
+      const recovering = Boolean(get().error);
       const normalizedQuery = { ...query, page: 1, limit: query.limit ?? 40 };
       set({ posts: [], selectedPostKeys: [], page: 0, hasMore: false, isLoading: true, isLoadingMore: false, error: null, query: normalizedQuery });
       try {
         const result = await adapter().searchPosts(normalizedQuery, credentials());
         if (requestId !== requestSequence) return;
         set({ posts: result.items, page: 1, hasMore: result.hasMore, isLoading: false });
+        if (recovering) notify({ tone: 'success', title: messages.toast.restored, description: messages.toast.restoredBody });
       } catch (error) {
         if (requestId !== requestSequence) return;
-        set({ isLoading: false, error: error instanceof Error ? error.message : 'Search failed' });
+        const detail = error instanceof Error ? error.message : 'Search failed';
+        set({ isLoading: false, error: detail });
+        const limited = error instanceof ApiRequestError && error.status === 429;
+        notify({ tone: limited ? 'warning' : 'error', title: limited ? messages.toast.rateLimited : messages.toast.searchFailed, description: limited ? messages.toast.rateLimitedBody : messages.toast.networkBody });
       }
     },
+    retry: async () => { await get().search(get().query); },
     loadMore: async () => {
       const state = get();
       if (state.isLoading || state.isLoadingMore || !state.hasMore) return;

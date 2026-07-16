@@ -121,7 +121,6 @@ export const danbooruAdapter: BooruAdapter = {
     const url = new URL('/posts.json', BASE_URL);
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('page', String(page));
-    url.searchParams.set('only', 'id,rating,tag_string,tag_string_general,tag_string_artist,tag_string_copyright,tag_string_character,tag_string_meta,score,up_score,down_score,fav_count,is_favorited,uploader_name,uploader_id,source,image_width,image_height,file_size,file_ext,preview_file_url,large_file_url,file_url,md5,created_at,updated_at,parent_id,has_children,pool_ids,is_pending,is_flagged,is_deleted,media_asset');
     const terms = buildSourceTags('danbooru', query);
     if (terms) url.searchParams.set('tags', terms);
 

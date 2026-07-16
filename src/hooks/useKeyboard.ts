@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { actionMessages } from '../i18n/en-actions';
 import { booruSources, getBooruAdapter } from '../services/booru-adapters';
 import { downloadPost, downloadPosts } from '../services/download-service';
 import { useFavoriteStore } from '../stores/favorite-store';
@@ -17,7 +18,7 @@ export function useKeyboard() {
     if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.commands?.getAll) {
       void chrome.commands.getAll().then((commands) => {
         const slideshow = commands.find((command) => command.name === 'toggle-slideshow');
-        if (slideshow && !slideshow.shortcut) useUiStore.getState().setShortcutNotice('Ctrl+Shift+S is occupied. Reassign it at chrome://extensions/shortcuts.');
+        if (slideshow && !slideshow.shortcut) useUiStore.getState().setShortcutNotice(navigator.userAgent.includes('Firefox') ? actionMessages.shortcuts.firefoxOccupied : actionMessages.shortcuts.chromeOccupied);
       });
     }
     const onKeyDown = (event: KeyboardEvent) => {

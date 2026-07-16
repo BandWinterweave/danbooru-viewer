@@ -64,7 +64,10 @@ function developmentApiProxy(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const firefox = mode === 'firefox';
+  const development = mode === 'development';
+  return {
   plugins: mode === 'test' ? [] : [developmentApiProxy(), react(), webExtension({
     manifest: {
       ...manifest,
@@ -74,8 +77,19 @@ export default defineConfig(({ mode }) => ({
     },
   })],
   build: {
-    outDir: 'dist',
+    outDir: development ? 'dist-dev' : firefox ? 'dist-firefox' : 'dist',
     emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          state: ['zustand', 'idb-keyval'],
+          viewer: ['yet-another-react-lightbox'],
+          virtual: ['@tanstack/react-virtual'],
+        },
+      },
+    },
   },
   server: {
     open: '/src/newtab/index.html',
@@ -84,4 +98,5 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
   },
-}));
+};
+});

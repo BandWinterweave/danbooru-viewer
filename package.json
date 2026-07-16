@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node vite.dev.mjs",
     "build": "tsc -b && vite build",
+    "build:firefox": "tsc -b && vite build --mode firefox && node scripts/firefox-manifest.mjs",
+    "assets": "node scripts/generate-icons.mjs",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
   },

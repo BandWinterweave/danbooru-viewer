@@ -5,6 +5,7 @@ import { useFilterStore } from '../../stores/filter-store';
 import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { TagAutocompleteResult } from '../../types/api';
+import { shellMessages } from '../../i18n/en-shell';
 
 const suggestionCache = new Map<string, { expiresAt: number; items: TagAutocompleteResult[] }>();
 
@@ -63,12 +64,12 @@ export function SearchBar() {
         onChange={(event) => setSearchText(event.target.value)}
         onFocus={() => setOpen(Boolean(suggestions.length))}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-        placeholder="Search tags, artists, characters..."
+        placeholder={shellMessages.search.placeholder}
         autoComplete="off"
         spellCheck={false}
       />
-      {searchText && <button type="button" className="search-clear" title="Clear search" onClick={() => { setSearchText(''); inputRef.current?.focus(); }}><X size={16} /></button>}
-      <button type="submit" className="search-submit">Search</button>
+      {searchText && <button type="button" className="search-clear" title={shellMessages.search.clear} onClick={() => { setSearchText(''); inputRef.current?.focus(); }}><X size={16} /></button>}
+      <button type="submit" className="search-submit">{shellMessages.search.submit}</button>
       {open && suggestions.length > 0 && (
         <div className="suggestions" role="listbox">
           {suggestions.map((suggestion) => (

@@ -1,4 +1,5 @@
 import { createStore, get, set } from 'idb-keyval';
+import { actionMessages } from '../i18n/en-actions';
 import type { UnifiedPost } from '../types/post';
 import { displayImageUrl } from './api/image-url';
 
@@ -52,13 +53,13 @@ async function recordDownload(post: UnifiedPost) {
 
 export async function downloadPost(post: UnifiedPost, size: DownloadSize = 'full', rule = '{source}-{id}-{artist}'): Promise<void> {
   const url = resolveDownloadUrl(post, size);
-  if (!url) throw new Error('This post has no downloadable image');
+  if (!url) throw new Error(actionMessages.download.unavailable);
   const filename = buildDownloadFilename(post, rule, size);
   if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.downloads) {
     await chrome.downloads.download({ url, filename, saveAs: false });
   } else {
     const response = await fetch(displayImageUrl(url));
-    if (!response.ok) throw new Error(`Image download failed (${response.status})`);
+    if (!response.ok) throw new Error(actionMessages.download.imageFailed(response.status));
     const objectUrl = URL.createObjectURL(await response.blob());
     const anchor = document.createElement('a');
     anchor.href = objectUrl;

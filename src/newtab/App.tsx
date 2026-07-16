@@ -6,28 +6,22 @@ import { usePostStore } from '../stores/post-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { useFavoriteStore } from '../stores/favorite-store';
 import { useKeyboard } from '../hooks/useKeyboard';
+import { ToastViewport } from '../components/feedback/ToastViewport';
+import { useTheme } from '../hooks/useTheme';
 
 export default function App() {
   useKeyboard();
+  useTheme();
   const filters = useFilterStore((state) => state.activeFilters);
   const ratings = useFilterStore((state) => state.ratings);
-  const theme = useSettingsStore((state) => state.theme);
   const activeSource = useSettingsStore((state) => state.activeSource);
   const meta = useFilterStore((state) => state.meta);
 
   useEffect(() => { void useFavoriteStore.getState().hydrate(); }, []);
 
   useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => document.documentElement.dataset.theme = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme;
-    apply();
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
-  }, [theme]);
-
-  useEffect(() => {
     void usePostStore.getState().search(useFilterStore.getState().getSearchQuery());
   }, [activeSource, filters, ratings, meta]);
 
-  return <AppShell><PostGrid /></AppShell>;
+  return <><AppShell><PostGrid /></AppShell><ToastViewport /></>;
 }

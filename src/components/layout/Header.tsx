@@ -7,6 +7,7 @@ import { RatingQuickToggle } from '../filter/RatingQuickToggle';
 import { SearchBar } from '../search/SearchBar';
 import { AdvancedFilter } from '../search/AdvancedFilter';
 import { useUiStore } from '../../stores/ui-store';
+import { shellMessages } from '../../i18n/en-shell';
 
 export function Header() {
   const theme = useSettingsStore((state) => state.theme);
@@ -30,21 +31,21 @@ export function Header() {
       <div className="brand-row">
         <div className="brand-block">
           <div className="brand-mark">D</div>
-          <div><strong>Danbooru</strong><span>VIEWER / 01</span></div>
+          <div><strong>{shellMessages.header.brandName}</strong><span>{shellMessages.header.brandEdition}</span></div>
         </div>
-        <div className="source-tabs" aria-label="Booru source">
+        <div className="source-tabs" aria-label={shellMessages.header.sourceLabel}>
           {booruSources.map((source) => <button key={source.id} className={`source-tab ${activeSource === source.id ? 'is-active' : ''}`} onClick={() => setActiveSource(source.id)}>{source.name}{activeSource === source.id && <span className="live-dot" />}</button>)}
         </div>
         <div className="header-tools">
-          <span className={`auth-status ${credential?.username && credential.apiKey ? 'is-authenticated' : ''}`} title={credential?.username && credential.apiKey ? `Authenticated as ${credential.username}` : 'No API credentials for this source'}><KeyRound size={13} />{credential?.username && credential.apiKey ? 'AUTH' : 'READ-ONLY'}</span>
-          <button className="icon-button" title={`Theme: ${theme}`} onClick={toggleTheme}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
-          <button className="icon-button" title="Open settings" onClick={openOptions}><Settings size={17} /></button>
+          <span className={`auth-status ${credential?.username && credential.apiKey ? 'is-authenticated' : ''}`} title={credential?.username && credential.apiKey ? shellMessages.header.authenticatedAs(credential.username) : shellMessages.header.noCredentials}><KeyRound size={13} />{credential?.username && credential.apiKey ? shellMessages.header.authenticated : shellMessages.header.readOnly}</span>
+          <button className="icon-button" title={shellMessages.header.theme(theme)} onClick={toggleTheme}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
+          <button className="icon-button" title={shellMessages.header.openSettings} onClick={openOptions}><Settings size={17} /></button>
         </div>
       </div>
       <div className="search-row" ref={searchAreaRef}>
         <SearchBar />
         <RatingQuickToggle />
-          <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} title="Advanced filters" onClick={toggleFilters}><SlidersHorizontal size={15} /> Filters</button>
+          <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
       </div>
       <AdvancedFilter open={filtersOpen} />
       <FilterChipBar onAddFilter={focusSearch} />
