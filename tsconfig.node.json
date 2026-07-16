@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "composite": true,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node", "chrome"],
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -9,5 +12,5 @@
     "emitDeclarationOnly": true,
     "outDir": "./node_modules/.cache/tsconfig-node"
   },
-  "include": ["vite.config.ts", "src/manifest.json"]
+  "include": ["vite.config.ts", "playwright.config.ts", "tailwind.config.ts", "src/manifest.json"]
 }

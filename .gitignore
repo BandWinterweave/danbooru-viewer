@@ -4,5 +4,10 @@ dist-firefox/
 dist-dev/
 *.log
 .vite/
+*.tsbuildinfo
 tests/artifacts/
+test-results/
+playwright-report/
+coverage/
+artifacts/
 *.zip

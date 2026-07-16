@@ -15,7 +15,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["chrome", "vite/client", "@samrum/vite-plugin-web-extension/client"]
+    "types": ["chrome", "vite/client", "node"]
   },
   "include": ["src", "tests"]
 }

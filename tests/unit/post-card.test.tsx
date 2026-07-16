@@ -53,11 +53,11 @@ describe('PostCard', () => {
     expect(container.querySelector('.post-card')).toHaveAttribute('data-post-url', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
   });
 
-  it('shows multiple tags and applies the selected tag', () => {
+  it('shows multiple tags and applies the selected tag', async () => {
     vi.useFakeTimers();
     const { container } = render(<PostCard post={post} />);
     fireEvent.mouseMove(container.querySelector('.post-card')!, { clientX: 200, clientY: 200 });
-    act(() => vi.advanceTimersByTime(1000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(screen.getByText('re naya')).toBeInTheDocument();
     expect(screen.getByText('original')).toBeInTheDocument();
     expect(screen.getByText('highres')).toBeInTheDocument();

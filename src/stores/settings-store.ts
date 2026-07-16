@@ -74,7 +74,8 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     version: 1,
     migrate: (persistedState) => {
       if (!persistedState || typeof persistedState !== 'object') return persistedState as SettingsStore;
-      const { slideshowInterval: _removed, ...state } = persistedState as Record<string, unknown>;
+      const state = { ...persistedState as Record<string, unknown> };
+      delete state.slideshowInterval;
       return state as unknown as SettingsStore;
     },
   },
