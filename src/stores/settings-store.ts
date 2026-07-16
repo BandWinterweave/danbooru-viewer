@@ -6,12 +6,14 @@ import type { Credentials } from '../types/api';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Layout = 'grid' | 'masonry' | 'list';
+export type DetailImageQuality = 'preview' | 'sample' | 'original';
 
 interface SettingsStore {
   activeSource: BooruSource;
   theme: Theme;
   columns: number;
   layout: Layout;
+  detailImageQuality: DetailImageQuality;
   keyboardEnabled: boolean;
   downloadRule: string;
   slideshowInterval: number;
@@ -25,6 +27,7 @@ interface SettingsStore {
   setTheme: (theme: Theme) => void;
   setColumns: (columns: number) => void;
   setLayout: (layout: Layout) => void;
+  setDetailImageQuality: (quality: DetailImageQuality) => void;
   setKeyboardEnabled: (enabled: boolean) => void;
   setDownloadRule: (rule: string) => void;
   setSlideshowInterval: (seconds: number) => void;
@@ -43,6 +46,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     theme: 'system',
     columns: 5,
     layout: 'grid',
+    detailImageQuality: 'sample',
     keyboardEnabled: true,
     downloadRule: '{source}-{id}-{artist}',
     slideshowInterval: 5,
@@ -56,6 +60,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setTheme: (theme) => set({ theme }),
     setColumns: (columns) => set({ columns: Math.min(Math.max(columns, 2), 8) }),
     setLayout: (layout) => set({ layout }),
+    setDetailImageQuality: (detailImageQuality) => set({ detailImageQuality }),
     setKeyboardEnabled: (keyboardEnabled) => set({ keyboardEnabled }),
     setDownloadRule: (downloadRule) => set({ downloadRule: downloadRule.trim() || '{source}-{id}' }),
     setSlideshowInterval: (seconds) => set({ slideshowInterval: Math.min(Math.max(seconds, 2), 30) }),

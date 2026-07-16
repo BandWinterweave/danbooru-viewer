@@ -1,9 +1,9 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, Minus, Plus, Send, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, X } from 'lucide-react';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { getBooruAdapter } from '../../services/booru-adapters';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
-import { useSettingsStore } from '../../stores/settings-store';
+import { useSettingsStore, type DetailImageQuality } from '../../stores/settings-store';
 import { useUiStore } from '../../stores/ui-store';
 import type { CommentRecord, RelatedTagRecord } from '../../types/api';
 import { displayImageUrl } from '../../services/api/image-url';
@@ -46,26 +46,35 @@ function PostInformation({ post }: { post: UnifiedPost }) {
   </dl></section>;
 }
 
-function ZoomableMedia({ post }: { post: UnifiedPost }) {
+function detailImageUrl(post: UnifiedPost, quality: DetailImageQuality) {
+  if (quality === 'preview') return post.previewUrl || post.sampleUrl || post.fileUrl;
+  if (quality === 'original') return post.fileUrl || post.sampleUrl || post.previewUrl;
+  return post.sampleUrl || post.fileUrl || post.previewUrl;
+}
+
+function ZoomableMedia({ post, quality }: { post: UnifiedPost; quality: DetailImageQuality }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const dragging = useRef(false);
   const lastPoint = useRef({ x: 0, y: 0 });
-  const source = post.fileUrl || post.sampleUrl || post.previewUrl;
+  const source = detailImageUrl(post, quality);
+  const thumbnailSource = post.previewUrl || post.sampleUrl || post.fileUrl;
 
   useEffect(() => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFailed(false);
-  }, [post.source, post.id]);
+    setLoaded(false);
+  }, [post.source, post.id, quality]);
 
   if (isVideoPost(post) || !source || failed) return <MediaPreview key={`${post.source}:${post.id}`} post={post} eager />;
 
   const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
   const zoom = (event: React.WheelEvent) => {
     event.preventDefault();
-    setScale((current) => Math.min(8, Math.max(1, current * Math.exp(-event.deltaY * .0015))));
+    setScale((current) => Math.min(20, Math.max(.1, current * Math.exp(-event.deltaY * .0015))));
   };
   const startDrag = (event: React.PointerEvent) => {
     if (scale <= 1) return;
@@ -84,7 +93,9 @@ function ZoomableMedia({ post }: { post: UnifiedPost }) {
 
   return (
     <div className="detail-media-zoom" onWheel={zoom} onDoubleClick={reset} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
-      <img src={displayImageUrl(source)} alt={postMessages.common.postAlt(post.source, post.id)} draggable={false} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
+      {!loaded && <span className="detail-media-loading"><LoaderCircle className="spin" size={24} /></span>}
+      {thumbnailSource && <img className={`detail-media-thumb ${loaded ? 'is-replaced' : ''}`} src={displayImageUrl(thumbnailSource)} alt="" draggable={false} aria-hidden="true" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />}
+      <img className={`detail-media-full ${loaded ? 'is-loaded' : ''}`} src={displayImageUrl(source)} alt={postMessages.common.postAlt(post.source, post.id)} draggable={false} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
     </div>
   );
 }
@@ -95,6 +106,7 @@ export function PostDetail() {
   const close = useUiStore((state) => state.closeDetail);
   const addTag = useFilterStore((state) => state.addTagFilter);
   const credential = useSettingsStore((state) => state.credentials[post?.source ?? state.activeSource]);
+  const detailImageQuality = useSettingsStore((state) => state.detailImageQuality);
   const isLocal = useFavoriteStore((state) => post ? state.isLocal(post) : false);
   const toggleLocal = useFavoriteStore((state) => state.toggleLocal);
   const toggleRemote = useFavoriteStore((state) => state.toggleRemote);
@@ -118,6 +130,18 @@ export function PostDetail() {
   const postIndex = post ? posts.findIndex((item) => item.source === post.source && item.id === post.id) : -1;
   const canPrevious = postIndex > 0;
   const canNext = postIndex >= 0 && (postIndex < posts.length - 1 || hasMore);
+
+  useEffect(() => {
+    if (!open) return;
+    const rootOverflow = document.documentElement.style.overflow;
+    const bodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = rootOverflow;
+      document.body.style.overflow = bodyOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (open && post) void enrichTags(post);
@@ -154,7 +178,7 @@ export function PostDetail() {
       <button className={`detail-scrim ${open ? 'is-open' : ''}`} aria-label={postMessages.detail.closeDetails} onClick={close} />
       <div className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open}>
         <section className="detail-media-stage" aria-label={postMessages.detail.postRecord}>
-          <ZoomableMedia post={post} />
+          <ZoomableMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} />
           <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title="Previous post" aria-label="Previous post" onClick={() => void navigateDetail(-1)}><ArrowLeft size={20} /></button>
           <button className="detail-nav detail-nav--next" disabled={!canNext || isLoadingMore} title="Next post" aria-label="Next post" onClick={() => void navigateDetail(1)}><ArrowRight size={20} /></button>
         </section>
