@@ -1,4 +1,4 @@
-import { KeyRound, Moon, Settings, SlidersHorizontal, Sun } from 'lucide-react';
+import { ImageOff, KeyRound, Moon, Settings, SlidersHorizontal, Sun } from 'lucide-react';
 import { useRef } from 'react';
 import { booruSources } from '../../services/booru-adapters';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -18,6 +18,8 @@ export function Header() {
   const filtersOpen = useUiStore((state) => state.advancedFiltersOpen);
   const toggleFilters = useUiStore((state) => state.toggleAdvancedFilters);
   const shortcutNotice = useUiStore((state) => state.shortcutNotice);
+  const hideUnavailablePreviews = useSettingsStore((state) => state.hideUnavailablePreviews);
+  const setHideUnavailablePreviews = useSettingsStore((state) => state.setHideUnavailablePreviews);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
   const openOptions = () => {
@@ -44,8 +46,9 @@ export function Header() {
       </div>
       <div className="search-row" ref={searchAreaRef}>
         <SearchBar />
-        <RatingQuickToggle />
+          <RatingQuickToggle />
           <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
+          <button className={`meta-shortcut preview-toggle ${hideUnavailablePreviews ? 'is-active' : ''}`} aria-pressed={hideUnavailablePreviews} title={shellMessages.header.hideUnavailablePreviews} onClick={() => setHideUnavailablePreviews(!hideUnavailablePreviews)}><ImageOff size={15} /> {shellMessages.header.hideUnavailable}</button>
       </div>
       <AdvancedFilter open={filtersOpen} />
       <FilterChipBar onAddFilter={focusSearch} />

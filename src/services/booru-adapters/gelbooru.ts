@@ -86,7 +86,7 @@ export function normalizeGelbooruTagResponse(data: unknown): TagAutocompleteResu
     const tags = (data as { tag?: GelbooruTagItem[] }).tag;
     items = Array.isArray(tags) ? tags : [];
   }
-  return items.map((item) => {
+  const normalized = items.map((item) => {
     const name = item.name ?? item.value ?? item.label?.replace(/\s+\([\d,]+\)$/, '') ?? '';
     const labelCount = item.label?.match(/\(([\d,]+)\)$/)?.[1]?.replaceAll(',', '');
     return {
@@ -96,6 +96,7 @@ export function normalizeGelbooruTagResponse(data: unknown): TagAutocompleteResu
       category: tagCategoryFromType(item.category ?? item.type),
     };
   }).filter((item) => item.name);
+  return [...new Map(normalized.map((item) => [item.name, item])).values()];
 }
 
 function withGelbooruAuth(url: URL, credentials?: Credentials) {
@@ -132,16 +133,19 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       return result.items[0];
     },
     async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {
-      if (query.trim().length < 2) return [];
+      const term = query.trim().toLowerCase();
+      if (term.length < 2) return [];
       const url = new URL('/index.php', options.baseUrl);
       if (options.id === 'gelbooru') {
-        url.searchParams.set('page', 'autocomplete2'); url.searchParams.set('type', 'tag_query'); url.searchParams.set('term', query.trim());
+        url.searchParams.set('page', 'autocomplete2'); url.searchParams.set('type', 'tag_query'); url.searchParams.set('term', term);
       } else {
-        url.searchParams.set('page', 'dapi'); url.searchParams.set('s', 'tag'); url.searchParams.set('q', 'index'); url.searchParams.set('json', '1'); url.searchParams.set('name_pattern', `${query.trim()}%`);
+        url.searchParams.set('page', 'dapi'); url.searchParams.set('s', 'tag'); url.searchParams.set('q', 'index'); url.searchParams.set('json', '1'); url.searchParams.set('name_pattern', `${term}%`);
       }
       url.searchParams.set('limit', '8');
       withGelbooruAuth(url, credentials);
-      const items = normalizeGelbooruTagResponse(await apiGet<unknown>(url));
+      const items = normalizeGelbooruTagResponse(await apiGet<unknown>(url))
+        .filter((item) => item.name.toLowerCase().startsWith(term))
+        .slice(0, 8);
       items.forEach((item) => rememberTagCategory(options.id, item.name, item.category));
       return items;
     },

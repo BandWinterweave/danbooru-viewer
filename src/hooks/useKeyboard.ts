@@ -32,10 +32,9 @@ export function useKeyboard() {
       if (key === 'escape') { if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
       if (key === 'f' && current) { void useFavoriteStore.getState().toggleLocal(current); return; }
       if (key === 'd' && current && ui.detailOpen) { void downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule); return; }
-      if ((key === 'arrowleft' || key === 'arrowright') && current) {
-        const index = postState.posts.findIndex((post) => post.id === current.id && post.source === current.source);
-        const next = postState.posts[index + (key === 'arrowright' ? 1 : -1)];
-        if (next) ui.openDetail(next);
+      if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen) {
+        event.preventDefault();
+        if (!event.repeat) void postState.navigateDetail(key === 'arrowright' ? 1 : -1);
         return;
       }
       if ((key === 'arrowup' || key === 'arrowdown') && current) {

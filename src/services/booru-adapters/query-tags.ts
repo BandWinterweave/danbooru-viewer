@@ -20,6 +20,7 @@ export function buildSourceTags(source: BooruSource, query: SearchQuery): string
     source === 'danbooru' && query.dateAfter ? `date:>=${query.dateAfter}` : '',
     query.minWidth ? `width:>=${query.minWidth}` : '',
     query.minHeight ? `height:>=${query.minHeight}` : '',
+    source === 'danbooru' && query.order === 'random' ? 'age:<1month' : '',
   ];
   if (query.order) {
     terms.push(source === 'gelbooru' || source === 'safebooru' || source === 'rule34'

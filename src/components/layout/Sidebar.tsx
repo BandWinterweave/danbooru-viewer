@@ -1,4 +1,4 @@
-import { Clock3, Compass, Download, Grid3X3, PanelLeftClose, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Clock3, Compass, Download, Grid3X3, PanelLeftClose, Plus, Shuffle, Trash2, Upload, X } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import { usePostStore } from '../../stores/post-store';
 import { useUiStore } from '../../stores/ui-store';
@@ -81,9 +81,10 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-heading"><span>{shellMessages.sidebar.browse}</span><button title={shellMessages.sidebar.collapse} onClick={toggle}><PanelLeftClose size={16} /></button></div>
       <nav className="side-nav">
-        <button className="is-current"><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
-        <button onClick={() => setMeta({ order: 'score' })}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
-        <button onClick={() => setMeta({ order: 'rank' })}><Clock3 size={16} /> {shellMessages.sidebar.trending}</button>
+         <button className="is-current"><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
+         <button onClick={() => setMeta({ order: 'score' })}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
+         <button onClick={() => setMeta({ order: 'rank' })}><Clock3 size={16} /> {shellMessages.sidebar.trending}</button>
+         <button onClick={() => setMeta({ order: 'random' })}><Shuffle size={16} /> {shellMessages.sidebar.random}</button>
       </nav>
       <div className="sidebar-section">
         <h2>{shellMessages.sidebar.quickTags}</h2>
@@ -106,7 +107,6 @@ export function Sidebar() {
       <div className="sidebar-section"><h2>{shellMessages.sidebar.filterPresets}</h2>{presets.filter((preset) => preset.sourceId === source).map((preset) => <div className="sidebar-list-item" key={preset.id}><button onClick={() => loadPreset(preset.id)}>{preset.name}</button><button title={shellMessages.sidebar.deletePreset(preset.name)} onClick={() => deletePreset(preset.id)}><Trash2 size={12} /></button></div>)}{!presets.some((preset) => preset.sourceId === source) && <p className="sidebar-empty">{shellMessages.sidebar.noSavedPresets}</p>}</div>
       <FavoriteGroups />
       <div className="sidebar-section favorite-library"><h2>{shellMessages.sidebar.recentSaves}</h2><div className="favorite-list">{favorites.slice(0, 5).map((post) => <button key={`${post.source}:${post.id}`} onClick={() => openDetail(post)}><CachedImage src={displayImageUrl(post.previewUrl)} alt="" /><span>#{post.id}<small>{post.source}</small></span></button>)}</div><div className="sidebar-file-actions"><button title={shellMessages.sidebar.exportFavorites} onClick={exportJson}><Download size={13} /> {shellMessages.sidebar.export}</button><button title={shellMessages.sidebar.importFavorites} onClick={() => fileRef.current?.click()}><Upload size={13} /> {shellMessages.sidebar.import}</button></div><input ref={fileRef} hidden type="file" accept="application/json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFavorites(file); event.target.value = ''; }} /></div>
-      <div className="sidebar-note"><span>{shellMessages.sidebar.phase}</span><p>{shellMessages.sidebar.note}</p></div>
     </aside>
   );
 }

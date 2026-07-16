@@ -51,7 +51,10 @@ async function performRequest<T>(url: URL, method: 'GET' | 'POST' | 'DELETE', he
     const requestUrl = source && typeof window !== 'undefined'
       ? new URL(`/__api/${source}${url.pathname}${url.search}`, window.location.origin)
       : url;
-    const direct = await ky(requestUrl, { method, headers, body, throwHttpErrors: false, retry: { limit: method === 'GET' ? 2 : 0 }, timeout: 15_000 });
+    const randomQuery = url.searchParams.get('tags')?.includes('order:random')
+      || url.searchParams.get('tags')?.includes('sort:random')
+      || false;
+    const direct = await ky(requestUrl, { method, headers, body, cache: randomQuery ? 'no-store' : 'default', throwHttpErrors: false, retry: { limit: method === 'GET' ? 2 : 0 }, timeout: 15_000 });
     const responseText = direct.ok && direct.status !== 204 ? await direct.text() : '';
     response = {
       ok: direct.ok,

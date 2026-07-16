@@ -85,7 +85,6 @@ export default defineConfig(({ mode }) => {
         manualChunks: {
           react: ['react', 'react-dom'],
           state: ['zustand', 'idb-keyval'],
-          viewer: ['yet-another-react-lightbox'],
           virtual: ['@tanstack/react-virtual'],
         },
       },

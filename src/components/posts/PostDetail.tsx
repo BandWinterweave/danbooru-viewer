@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, CircleOff, ExternalLink, Heart, Minus, Plus, Send, X } from 'lucide-react';
-import { FormEvent, useEffect, useState } from 'react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, Minus, Plus, Send, X } from 'lucide-react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { getBooruAdapter } from '../../services/booru-adapters';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
@@ -9,7 +9,7 @@ import type { CommentRecord, RelatedTagRecord } from '../../types/api';
 import { displayImageUrl } from '../../services/api/image-url';
 import type { PoolRecord, TagCategory, UnifiedPost } from '../../types/post';
 import { DownloadMenu } from '../downloads/DownloadMenu';
-import { postPageUrl } from '../../services/post-media';
+import { isVideoPost, postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { postMessages } from '../../i18n/en-posts';
 import { usePostStore } from '../../stores/post-store';
@@ -46,6 +46,49 @@ function PostInformation({ post }: { post: UnifiedPost }) {
   </dl></section>;
 }
 
+function ZoomableMedia({ post }: { post: UnifiedPost }) {
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [failed, setFailed] = useState(false);
+  const dragging = useRef(false);
+  const lastPoint = useRef({ x: 0, y: 0 });
+  const source = post.fileUrl || post.sampleUrl || post.previewUrl;
+
+  useEffect(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setFailed(false);
+  }, [post.source, post.id]);
+
+  if (isVideoPost(post) || !source || failed) return <MediaPreview key={`${post.source}:${post.id}`} post={post} eager />;
+
+  const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
+  const zoom = (event: React.WheelEvent) => {
+    event.preventDefault();
+    setScale((current) => Math.min(8, Math.max(1, current * Math.exp(-event.deltaY * .0015))));
+  };
+  const startDrag = (event: React.PointerEvent) => {
+    if (scale <= 1) return;
+    dragging.current = true;
+    lastPoint.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const drag = (event: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const dx = event.clientX - lastPoint.current.x;
+    const dy = event.clientY - lastPoint.current.y;
+    lastPoint.current = { x: event.clientX, y: event.clientY };
+    setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
+  };
+  const endDrag = () => { dragging.current = false; };
+
+  return (
+    <div className="detail-media-zoom" onWheel={zoom} onDoubleClick={reset} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <img src={displayImageUrl(source)} alt={postMessages.common.postAlt(post.source, post.id)} draggable={false} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
+    </div>
+  );
+}
+
 export function PostDetail() {
   const open = useUiStore((state) => state.detailOpen);
   const post = useUiStore((state) => state.currentPost);
@@ -59,6 +102,10 @@ export function PostDetail() {
   const groups = useFavoriteStore((state) => state.groups);
   const toggleInGroup = useFavoriteStore((state) => state.toggleInGroup);
   const enrichTags = usePostStore((state) => state.enrichTags);
+  const posts = usePostStore((state) => state.posts);
+  const hasMore = usePostStore((state) => state.hasMore);
+  const isLoadingMore = usePostStore((state) => state.isLoadingMore);
+  const navigateDetail = usePostStore((state) => state.navigateDetail);
   const [comments, setComments] = useState<CommentRecord[]>([]);
   const [relatedTags, setRelatedTags] = useState<RelatedTagRecord[]>([]);
   const [pools, setPools] = useState<PoolRecord[]>([]);
@@ -68,6 +115,9 @@ export function PostDetail() {
   const [busy, setBusy] = useState(false);
   const adapter = post ? getBooruAdapter(post.source) : null;
   const authenticated = Boolean(credential?.username && credential.apiKey);
+  const postIndex = post ? posts.findIndex((item) => item.source === post.source && item.id === post.id) : -1;
+  const canPrevious = postIndex > 0;
+  const canNext = postIndex >= 0 && (postIndex < posts.length - 1 || hasMore);
 
   useEffect(() => {
     if (open && post) void enrichTags(post);
@@ -102,14 +152,17 @@ export function PostDetail() {
   return (
     <>
       <button className={`detail-scrim ${open ? 'is-open' : ''}`} aria-label={postMessages.detail.closeDetails} onClick={close} />
-      <aside className={`detail-panel ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+      <div className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open}>
+        <section className="detail-media-stage" aria-label={postMessages.detail.postRecord}>
+          <ZoomableMedia post={post} />
+          <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title="Previous post" aria-label="Previous post" onClick={() => void navigateDetail(-1)}><ArrowLeft size={20} /></button>
+          <button className="detail-nav detail-nav--next" disabled={!canNext || isLoadingMore} title="Next post" aria-label="Next post" onClick={() => void navigateDetail(1)}><ArrowRight size={20} /></button>
+        </section>
+      <aside className="detail-panel">
         <div className="detail-header">
           <div><span>{postMessages.detail.postRecord}</span><h2>#{post.id}</h2></div>
           <button className="icon-button" title={postMessages.detail.closeDetails} onClick={close}><X size={18} /></button>
         </div>
-         <div className="detail-image">
-           <MediaPreview key={`${post.source}:${post.id}`} post={post} eager />
-         </div>
         <div className="detail-actions">
           <button className={isLocal ? 'is-active' : ''} onClick={() => void toggleLocal(post)}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
           <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !adapter?.addFavorite} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !adapter?.addFavorite ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
@@ -155,6 +208,7 @@ export function PostDetail() {
         </div>}
         {adapter?.getComments && <section className="comments-section"><h3>{postMessages.detail.comments} <span>{comments.length}</span></h3>{comments.length === 0 && <p>{postMessages.detail.noComments}</p>}{comments.map((comment) => <article key={comment.id}><header><strong>{comment.creator}</strong><time>{new Date(comment.createdAt).toLocaleDateString()}</time></header><p>{comment.body}</p></article>)}<form onSubmit={submitComment}><textarea value={commentBody} disabled={!authenticated} placeholder={authenticated ? postMessages.detail.writeComment : postMessages.detail.credentialsRequiredToComment} onChange={(event) => setCommentBody(event.target.value)} /><button title={postMessages.detail.postComment} disabled={!authenticated || !commentBody.trim() || busy}><Send size={15} /> {postMessages.detail.post}</button></form></section>}
       </aside>
+      </div>
     </>
   );
 }

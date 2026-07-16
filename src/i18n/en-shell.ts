@@ -11,6 +11,9 @@ export const shellMessages = {
     openSettings: 'Open settings',
     advancedFilters: 'Advanced filters',
     filters: 'Filters',
+    hideUnavailablePreviews: 'Hide unavailable previews',
+    hideUnavailable: 'Hide unavailable',
+    random: 'Random',
   },
   appShell: {
     confirmDownloadSelection: (count: number) => `Download ${count} selected posts?`,
@@ -34,6 +37,7 @@ export const shellMessages = {
     discover: 'Discover',
     topScored: 'Top scored',
     trending: 'Trending',
+    random: 'Random',
     quickTags: 'Quick tags',
     addTagPlaceholder: 'Add a tag',
     newQuickTag: 'New quick tag',
@@ -48,8 +52,6 @@ export const shellMessages = {
     export: 'Export',
     importFavorites: 'Import favorites',
     import: 'Import',
-    phase: 'PHASE 02',
-    note: 'Multi-source browsing with local collections and authenticated actions.',
   },
   search: {
     placeholder: 'Search tags, artists, characters...',
@@ -70,8 +72,8 @@ export const shellMessages = {
   },
   rating: {
     filters: 'Rating filters',
-    general: 'General / Safe',
-    safe: 'Safe',
+    general: 'General',
+    sensitive: 'Sensitive',
     questionable: 'Questionable',
     explicit: 'Explicit',
   },

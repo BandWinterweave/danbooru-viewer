@@ -28,3 +28,11 @@ export function postPageUrl(post: UnifiedPost) {
 export function displayMediaUrl(post: UnifiedPost) {
   return post.playbackUrl || post.sampleUrl || post.fileUrl || post.previewUrl;
 }
+
+export function previewMediaUrl(post: UnifiedPost) {
+  return isVideoPost(post) ? post.playbackUrl || post.fileUrl : post.sampleUrl || post.previewUrl || post.fileUrl;
+}
+
+export function hasAvailablePreview(post: UnifiedPost) {
+  return Boolean(previewMediaUrl(post));
+}

@@ -33,7 +33,7 @@ export function FilterChipBar({ onAddFilter }: FilterChipBarProps) {
         ))}
         {ratings.map((rating) => (
           <span className={`filter-chip filter-chip--rating-${rating}`} key={rating}>
-            {shellMessages.filterBar.rating(rating === 'g' ? shellMessages.rating.safe : rating === 'q' ? shellMessages.rating.questionable : shellMessages.rating.explicit)}
+            {shellMessages.filterBar.rating(rating === 'g' ? shellMessages.rating.general : rating === 's' ? shellMessages.rating.sensitive : rating === 'q' ? shellMessages.rating.questionable : shellMessages.rating.explicit)}
             <button className="chip-remove" title={shellMessages.filterBar.removeRating} onClick={() => toggleRating(rating)}><X size={13} /></button>
           </span>
         ))}

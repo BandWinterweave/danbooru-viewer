@@ -22,6 +22,7 @@ interface PostStore {
   selectedPostKeys: string[];
   search: (query: SearchQuery) => Promise<void>;
   loadMore: () => Promise<void>;
+  navigateDetail: (direction: -1 | 1) => Promise<void>;
   retry: () => Promise<void>;
   enrichTags: (post: UnifiedPost) => Promise<void>;
   toggleSelected: (post: UnifiedPost) => void;
@@ -30,6 +31,7 @@ interface PostStore {
 }
 
 let requestSequence = 0;
+let loadMorePromise: Promise<void> | null = null;
 
 function credentials(source: BooruSource = useSettingsStore.getState().activeSource) {
   const value = useSettingsStore.getState().credentials[source];
@@ -73,27 +75,46 @@ export const usePostStore = create<PostStore>()(persist(
       const current = useUiStore.getState().currentPost;
       if (current?.source === enriched.source && current.id === enriched.id) useUiStore.getState().setCurrentPost(enriched);
     },
-    loadMore: async () => {
-      const state = get();
-      if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
-      const nextPage = state.page + 1;
-      const requestId = requestSequence;
-      const source = useSettingsStore.getState().activeSource;
-      set({ isLoadingMore: true, error: null });
-      try {
-        const result = await adapter().searchPosts({ ...state.query, page: nextPage }, credentials());
-        if (requestId !== requestSequence || source !== useSettingsStore.getState().activeSource) return;
-        set((current) => ({
-          posts: [...current.posts, ...result.items.filter((item) => !current.posts.some((post) => post.id === item.id))],
-          page: nextPage,
-          hasMore: result.hasMore,
-          isLoadingMore: false,
-        }));
-      } catch (error) {
-        if (requestId !== requestSequence) return;
-        set({ isLoadingMore: false, error: error instanceof Error ? error.message : 'Could not load more posts' });
-      }
-    },
+     loadMore: () => {
+       const state = get();
+       if (state.isLoading || !state.hasMore) return Promise.resolve();
+       if (loadMorePromise) return loadMorePromise;
+       loadMorePromise = (async () => {
+         const currentState = get();
+         const nextPage = currentState.page + 1;
+         const requestId = requestSequence;
+         const source = useSettingsStore.getState().activeSource;
+         set({ isLoadingMore: true, error: null });
+         try {
+           const result = await adapter().searchPosts({ ...currentState.query, page: nextPage }, credentials());
+           if (requestId !== requestSequence || source !== useSettingsStore.getState().activeSource) return;
+           set((current) => ({
+             posts: [...current.posts, ...result.items.filter((item) => !current.posts.some((post) => post.id === item.id && post.source === item.source))],
+             page: nextPage,
+             hasMore: result.hasMore,
+           }));
+         } catch (error) {
+           if (requestId === requestSequence) set({ error: error instanceof Error ? error.message : 'Could not load more posts' });
+         } finally {
+           if (requestId === requestSequence) set({ isLoadingMore: false });
+           loadMorePromise = null;
+         }
+       })();
+       return loadMorePromise;
+     },
+     navigateDetail: async (direction) => {
+       const state = get();
+       const current = useUiStore.getState().currentPost;
+       if (!current) return;
+       const index = state.posts.findIndex((post) => post.id === current.id && post.source === current.source);
+       if (index < 0) return;
+       const nextIndex = index + direction;
+       if (state.posts[nextIndex]) { useUiStore.getState().setCurrentPost(state.posts[nextIndex]); return; }
+       if (direction !== 1 || !state.hasMore) return;
+       await get().loadMore();
+       const next = get().posts[index + 1];
+       if (next) useUiStore.getState().setCurrentPost(next);
+     },
     toggleSelected: (post) => set((state) => {
       const key = `${post.source}:${post.id}`;
       return { selectedPostKeys: state.selectedPostKeys.includes(key) ? state.selectedPostKeys.filter((item) => item !== key) : [...state.selectedPostKeys, key] };

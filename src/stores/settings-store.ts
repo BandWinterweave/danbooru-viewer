@@ -19,6 +19,7 @@ interface SettingsStore {
   copyTagCategories: TagCategory[];
   copyTagsUseUnderscores: boolean;
   copyTagsEscapeParentheses: boolean;
+  hideUnavailablePreviews: boolean;
   credentials: Partial<Record<BooruSource, Credentials>>;
   setActiveSource: (source: BooruSource) => void;
   setTheme: (theme: Theme) => void;
@@ -32,6 +33,7 @@ interface SettingsStore {
   setCopyTagCategory: (category: TagCategory, enabled: boolean) => void;
   setCopyTagsUseUnderscores: (enabled: boolean) => void;
   setCopyTagsEscapeParentheses: (enabled: boolean) => void;
+  setHideUnavailablePreviews: (enabled: boolean) => void;
   setCredentials: (source: BooruSource, username: string, apiKey: string) => void;
 }
 
@@ -48,6 +50,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     copyTagCategories: ['artist', 'character', 'copyright', 'general', 'meta'],
     copyTagsUseUnderscores: true,
     copyTagsEscapeParentheses: false,
+    hideUnavailablePreviews: false,
     credentials: {},
     setActiveSource: (activeSource) => set({ activeSource }),
     setTheme: (theme) => set({ theme }),
@@ -61,6 +64,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setCopyTagCategory: (category, enabled) => set((state) => ({ copyTagCategories: enabled ? [...new Set([...state.copyTagCategories, category])] : state.copyTagCategories.filter((item) => item !== category) })),
     setCopyTagsUseUnderscores: (copyTagsUseUnderscores) => set({ copyTagsUseUnderscores }),
     setCopyTagsEscapeParentheses: (copyTagsEscapeParentheses) => set({ copyTagsEscapeParentheses }),
+    setHideUnavailablePreviews: (hideUnavailablePreviews) => set({ hideUnavailablePreviews }),
     setCredentials: (source, username, apiKey) => set((state) => ({ credentials: { ...state.credentials, [source]: { username: username.trim(), apiKey: apiKey.trim() } } })),
   }),
   { name: 'danbooru-settings', storage: createJSONStorage(() => extensionStorage) },

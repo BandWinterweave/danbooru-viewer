@@ -27,7 +27,10 @@ export async function proxyRequest(message: ApiProxyRequest): Promise<ApiProxyRe
   if (!['GET', 'POST', 'DELETE'].includes(method)) return { ok: false, status: 405, error: 'Method is not allowed' };
 
   const cacheKey = `${method}:${url.toString()}:${headers.Authorization ? 'authenticated' : 'public'}`;
-  const cacheable = method === 'GET' && !headers.Authorization;
+  const randomQuery = url.searchParams.get('tags')?.includes('order:random')
+    || url.searchParams.get('tags')?.includes('sort:random')
+    || false;
+  const cacheable = method === 'GET' && !headers.Authorization && !randomQuery;
   const cached = cacheable ? cache.get(cacheKey) : undefined;
   if (cached && cached.expiresAt > Date.now()) return { ok: true, status: 200, data: cached.value };
   const pendingRequest = cacheable ? pending.get(cacheKey) : undefined;
@@ -43,7 +46,7 @@ export async function proxyRequest(message: ApiProxyRequest): Promise<ApiProxyRe
 
 async function performFetch(url: URL, method: string, headers: Record<string, string>, body: string | undefined, cacheable: boolean, cacheKey: string): Promise<ApiProxyResponse> {
   try {
-    const response = await fetch(url, { method, headers, body, credentials: url.origin === 'https://danbooru.donmai.us' ? 'include' : 'omit' });
+    const response = await fetch(url, { method, headers, body, cache: cacheable ? 'default' : 'no-store', credentials: url.origin === 'https://danbooru.donmai.us' ? 'include' : 'omit' });
     const contentType = response.headers.get('content-type') ?? '';
     const responseText = response.status === 204 ? '' : await response.text();
     const htmlResponse = contentType.includes('text/html') || /^\s*<!doctype html/i.test(responseText);

@@ -17,10 +17,15 @@ describe('source-specific filter translation', () => {
     expect(buildSourceTags('gelbooru', query)).toContain('rating:general');
     expect(buildSourceTags('gelbooru', query)).toContain('sort:score:desc');
     expect(buildSourceTags('gelbooru', query)).not.toContain('date:');
+    expect(buildSourceTags('gelbooru', { ratings: ['s'] })).toBe('rating:sensitive');
+    expect(buildSourceTags('safebooru', { ratings: ['s'] })).toBe('rating:safe');
+    expect(buildSourceTags('rule34', { ratings: ['s'] })).toBe('rating:sensitive');
+    expect(buildSourceTags('yandere', { ratings: ['s'] })).toBe('rating:s');
     expect(buildSourceTags('rule34', { ratings: ['e'], order: 'random' })).toBe('rating:explicit sort:random:desc');
     expect(buildSourceTags('safebooru', { order: 'rank' })).toBe('sort:updated:desc');
     expect(buildSourceTags('danbooru', { order: 'rank' })).toBe('order:rank');
     expect(buildSourceTags('danbooru', { order: 'score' })).toBe('score:>50 order:score');
+    expect(buildSourceTags('danbooru', { order: 'random' })).toBe('age:<1month order:random');
   });
 
   it('applies unsupported date filters to normalized timestamps', () => {
