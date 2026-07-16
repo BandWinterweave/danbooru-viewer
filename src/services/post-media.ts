@@ -25,10 +25,6 @@ export function postPageUrl(post: UnifiedPost) {
   return urls[post.source];
 }
 
-export function displayMediaUrl(post: UnifiedPost) {
-  return post.playbackUrl || post.sampleUrl || post.fileUrl || post.previewUrl;
-}
-
 export function previewMediaUrl(post: UnifiedPost) {
   return isVideoPost(post) ? post.playbackUrl || post.fileUrl : post.sampleUrl || post.previewUrl || post.fileUrl;
 }

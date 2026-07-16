@@ -4,12 +4,13 @@ import { apiGet } from '../api/client';
 import { buildSourceTags } from './query-tags';
 import { isOnOrAfter } from './date-filter';
 import { rememberTagCategory, tagCategoryFor, tagCategoryFromType } from './tag-categories';
+import { safeHttpUrl } from '../safe-url';
 
 interface YanderePost { id: number; tags: string; rating: string; score: number; author?: string; source?: string; file_url?: string; preview_url?: string; sample_url?: string; width?: number; height?: number; file_size?: number; md5?: string; created_at?: number; parent_id?: number | null; has_children?: boolean; }
 export const normalizeYanderePost = (raw: YanderePost): UnifiedPost => {
   const createdAt = new Date((raw.created_at ?? 0) * 1000).toISOString();
   const fileExt = raw.file_url?.split('.').at(-1)?.split('?')[0].toLowerCase() ?? '';
-  return { id: raw.id, source: 'yandere', rating: (['s', 'q', 'e'].includes(raw.rating) ? raw.rating : 's') as Rating, tags: raw.tags.split(/\s+/).filter(Boolean).map((name) => ({ name, category: tagCategoryFor('yandere', name) })), tagString: raw.tags, score: raw.score ?? 0, upScore: 0, downScore: 0, favCount: 0, uploader: raw.author ?? 'unknown', sourceUrl: raw.source ?? '', imageWidth: raw.width ?? 0, imageHeight: raw.height ?? 0, fileSize: raw.file_size ?? 0, fileExt, previewUrl: raw.preview_url ?? '', sampleUrl: raw.sample_url ?? raw.file_url ?? '', fileUrl: raw.file_url ?? '', playbackUrl: ['mp4', 'webm'].includes(fileExt) ? raw.file_url : undefined, md5: raw.md5 ?? '', createdAt, updatedAt: createdAt, parentId: raw.parent_id ?? null, hasChildren: raw.has_children ?? false, status: 'active', poolIds: [], tagStringGeneral: raw.tags, tagStringArtist: '', tagStringCopyright: '', tagStringCharacter: '', tagStringMeta: '' };
+  return { id: raw.id, source: 'yandere', rating: (['s', 'q', 'e'].includes(raw.rating) ? raw.rating : 's') as Rating, tags: raw.tags.split(/\s+/).filter(Boolean).map((name) => ({ name, category: tagCategoryFor('yandere', name) })), tagString: raw.tags, score: raw.score ?? 0, upScore: 0, downScore: 0, favCount: 0, uploader: raw.author ?? 'unknown', sourceUrl: safeHttpUrl(raw.source), imageWidth: raw.width ?? 0, imageHeight: raw.height ?? 0, fileSize: raw.file_size ?? 0, fileExt, previewUrl: safeHttpUrl(raw.preview_url), sampleUrl: safeHttpUrl(raw.sample_url ?? raw.file_url), fileUrl: safeHttpUrl(raw.file_url), playbackUrl: ['mp4', 'webm'].includes(fileExt) ? safeHttpUrl(raw.file_url) || undefined : undefined, md5: raw.md5 ?? '', createdAt, updatedAt: createdAt, parentId: raw.parent_id ?? null, hasChildren: raw.has_children ?? false, status: 'active', poolIds: [], tagStringGeneral: raw.tags, tagStringArtist: '', tagStringCopyright: '', tagStringCharacter: '', tagStringMeta: '' };
 };
 export const yandereAdapter: BooruAdapter = {
   id: 'yandere', name: 'Yande.re', baseUrl: 'https://yande.re', supportsAuth: true, supportsWrites: false,

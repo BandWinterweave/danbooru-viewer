@@ -45,15 +45,6 @@ export interface UnifiedPost {
   tagStringMeta: string;
 }
 
-export interface NoteRecord {
-  id: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  body: string;
-}
-
 export interface PoolRecord {
   id: number;
   name: string;

@@ -8,7 +8,7 @@ A focused new-tab workspace for browsing, filtering, saving, and downloading pos
 
 Danbooru Viewer turns the browser's new tab into an image-first workspace for Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34.
 
-Search and combine tags without losing context. Switch between grid, masonry, and information-dense list layouts, inspect post metadata in a side panel, and open media in a full-screen viewer. Quick rating controls, reusable tags, local favorite groups, formatted tag copy, and single or batch downloads keep repeated workflows close at hand.
+Search and combine tags without losing context. Switch between grid, masonry, and information-dense list layouts, inspect post metadata in a side panel, and open media in a full-screen viewer. Quick rating controls, reusable tags, local favorite groups, formatted tag copy, and single or batch downloads keep repeated workflows close at hand. New installations select only the General rating by default, and users can manually choose another rating.
 
 The extension stores preferences, local favorites, download history, and a 24-hour thumbnail cache on the device. It does not include analytics or telemetry. Optional source credentials remain in browser extension storage and are sent only to the selected Booru API.
 
@@ -32,7 +32,7 @@ Danbooru Viewer does not collect, sell, or transmit usage analytics. API request
 1. Light theme: main grid with active filters and the post detail drawer.
 2. Dark theme: masonry layout with the tag hover inspector visible.
 3. Compact viewport: search, rating controls, and a two-column grid.
-4. Viewer: full-screen media with zoom and slideshow controls.
+4. Viewer: full-screen media with zoom, pan, and post navigation controls.
 5. Settings: theme, downloads, tag copy, and source credentials.
 
 Store images should use the current acceptance-test build and contain no explicit media or user credentials.

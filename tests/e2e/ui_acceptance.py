@@ -73,7 +73,7 @@ with sync_playwright() as playwright:
     page.screenshot(path=str(artifact_dir / "phase1-hover.png"), full_page=False)
 
     first_card.click()
-    assert page.locator(".detail-panel.is-open").is_visible()
+    assert page.locator(".detail-workspace.is-open").is_visible()
     assert page.locator(".detail-header h2", has_text="#1").is_visible()
     page.locator(".tag-group--artist .detail-tag").first.get_by_title("Include sample_artist").click()
     page.locator(".detail-panel .icon-button").click()

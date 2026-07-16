@@ -8,6 +8,7 @@ import { useFavoriteStore } from '../stores/favorite-store';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { ToastViewport } from '../components/feedback/ToastViewport';
 import { useTheme } from '../hooks/useTheme';
+import { runAsync } from '../services/notifications';
 
 export default function App() {
   useKeyboard();
@@ -17,7 +18,7 @@ export default function App() {
   const activeSource = useSettingsStore((state) => state.activeSource);
   const meta = useFilterStore((state) => state.meta);
 
-  useEffect(() => { void useFavoriteStore.getState().hydrate(); }, []);
+  useEffect(() => { runAsync('storage', useFavoriteStore.getState().hydrate()); }, []);
 
   useEffect(() => {
     void usePostStore.getState().search(useFilterStore.getState().getSearchQuery());

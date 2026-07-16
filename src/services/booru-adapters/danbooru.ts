@@ -9,6 +9,7 @@ import type { Rating, TagCategory, UnifiedPost } from '../../types/post';
 import { apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
 import { rememberTagCategory, tagCategoryFromType } from './tag-categories';
+import { safeHttpUrl } from '../safe-url';
 
 const BASE_URL = 'https://danbooru.donmai.us';
 
@@ -85,15 +86,15 @@ export function normalizePost(raw: DanbooruRawPost): UnifiedPost {
     isFavorited: raw.is_favorited ?? false,
     uploader: raw.uploader_name ?? 'unknown',
     uploaderId: raw.uploader_id,
-    sourceUrl: raw.source ?? '',
+    sourceUrl: safeHttpUrl(raw.source),
     imageWidth: raw.image_width ?? 0,
     imageHeight: raw.image_height ?? 0,
     fileSize: raw.file_size ?? 0,
     fileExt: raw.file_ext ?? '',
-    previewUrl: raw.preview_file_url ?? raw.large_file_url ?? raw.file_url ?? '',
-    sampleUrl: raw.large_file_url ?? raw.file_url ?? raw.preview_file_url ?? '',
-    fileUrl: raw.file_url ?? raw.large_file_url ?? raw.preview_file_url ?? '',
-    playbackUrl: playableVariant?.url ?? (['mp4', 'webm'].includes(raw.file_ext?.toLowerCase()) ? raw.file_url : undefined),
+    previewUrl: safeHttpUrl(raw.preview_file_url ?? raw.large_file_url ?? raw.file_url),
+    sampleUrl: safeHttpUrl(raw.large_file_url ?? raw.file_url ?? raw.preview_file_url),
+    fileUrl: safeHttpUrl(raw.file_url ?? raw.large_file_url ?? raw.preview_file_url),
+    playbackUrl: safeHttpUrl(playableVariant?.url ?? (['mp4', 'webm'].includes(raw.file_ext?.toLowerCase()) ? raw.file_url : undefined)) || undefined,
     duration: typeof raw.media_asset?.duration === 'number' ? raw.media_asset.duration : undefined,
     md5: raw.md5 ?? '',
     createdAt: raw.created_at,
@@ -160,13 +161,6 @@ export const danbooruAdapter: BooruAdapter = {
   async createComment(postId, body, credentials) {
     const comment = await apiRequest<{ id: number; post_id: number; creator_name?: string; body: string; score: number; created_at: string }>(new URL('/comments.json', BASE_URL), { method: 'POST', credentials, body: { comment: { post_id: postId, body } } });
     return { id: comment.id, postId: comment.post_id, creator: comment.creator_name ?? credentials.username, body: comment.body, score: comment.score, createdAt: comment.created_at };
-  },
-  async getNotes(postId, credentials) {
-    const url = new URL('/notes.json', BASE_URL);
-    url.searchParams.set('search[post_id]', String(postId));
-    url.searchParams.set('limit', '100');
-    const notes = await apiGet<Array<{ id: number; x: number; y: number; width: number; height: number; body: string; is_active?: boolean }>>(url, credentials);
-    return notes.filter((note) => note.is_active !== false).map(({ id, x, y, width, height, body }) => ({ id, x, y, width, height, body }));
   },
   async getRelatedTags(tag, credentials) {
     const url = new URL('/related_tag.json', BASE_URL);

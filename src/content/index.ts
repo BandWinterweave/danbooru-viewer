@@ -18,7 +18,7 @@ function enhancePost(element: Element) {
   copy.title = actionMessages.content.copyTagsTitle;
   copy.addEventListener('click', (event) => {
     event.preventDefault(); event.stopPropagation();
-    void navigator.clipboard.writeText(tags.trim()).then(() => { copy.textContent = actionMessages.content.copied; window.setTimeout(() => { copy.textContent = actionMessages.content.copyTags; }, 1200); });
+    void navigator.clipboard.writeText(tags.trim()).then(() => { copy.textContent = actionMessages.content.copied; }, () => { copy.textContent = actionMessages.content.copyFailed; }).finally(() => { window.setTimeout(() => { copy.textContent = actionMessages.content.copyTags; }, 1200); });
   });
   actions.append(copy);
   element.append(actions);

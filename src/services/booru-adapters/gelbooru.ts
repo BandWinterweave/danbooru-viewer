@@ -4,6 +4,7 @@ import { ApiRequestError, apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
 import { isOnOrAfter } from './date-filter';
 import { rememberTagCategory, tagCategoryFor, tagCategoryFromType } from './tag-categories';
+import { safeHttpUrl } from '../safe-url';
 
 interface GelbooruRawPost {
   id: number | string;
@@ -29,8 +30,9 @@ interface GelbooruRawPost {
 const ratingMap: Record<string, Rating> = { general: 'g', safe: 's', sensitive: 's', questionable: 'q', explicit: 'e', g: 'g', s: 's', q: 'q', e: 'e' };
 const sourceBases: Partial<Record<BooruSource, string>> = { gelbooru: 'https://gelbooru.com', safebooru: 'https://safebooru.org', rule34: 'https://api.rule34.xxx' };
 const absoluteUrl = (value: string | undefined, source: BooruSource) => {
-  if (!value) return '';
-  const url = new URL(value, sourceBases[source]);
+  const safe = safeHttpUrl(value, sourceBases[source]);
+  if (!safe) return '';
+  const url = new URL(safe);
   if (url.protocol === 'http:') url.protocol = 'https:';
   return url.toString();
 };
@@ -60,7 +62,7 @@ export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource)
     id: Number(raw.id), source, rating: ratingMap[raw.rating ?? ''] ?? 's',
     tags: categorizedTags(raw, source),
     tagString, score: Number(raw.score ?? 0), upScore: 0, downScore: 0, favCount: 0,
-    uploader: raw.owner ?? 'unknown', sourceUrl: raw.source ?? '', imageWidth: Number(raw.width ?? 0),
+    uploader: raw.owner ?? 'unknown', sourceUrl: safeHttpUrl(raw.source), imageWidth: Number(raw.width ?? 0),
     imageHeight: Number(raw.height ?? 0), fileSize: 0, fileExt: raw.file_url?.split('.').at(-1)?.split('?')[0] ?? '',
     previewUrl: absoluteUrl(raw.preview_url ?? raw.sample_url ?? raw.file_url, source), sampleUrl: absoluteUrl(raw.sample_url ?? raw.file_url ?? raw.preview_url, source),
     fileUrl: absoluteUrl(raw.file_url ?? raw.sample_url ?? raw.preview_url, source), md5: raw.md5 ?? '', createdAt: date, updatedAt: date,

@@ -40,6 +40,9 @@ with sync_playwright() as p:
     context = browser.new_context(viewport={"width": 1440, "height": 900})
     context.grant_permissions(["clipboard-read", "clipboard-write"], origin="http://127.0.0.1:5173")
     page = context.new_page()
+    unhandled_rejections = []
+    page.expose_function("recordUnhandledRejection", lambda reason: unhandled_rejections.append(reason))
+    page.add_init_script("window.addEventListener('unhandledrejection', event => window.recordUnhandledRejection(String(event.reason)))")
     errors = []
     downloads = []
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
@@ -56,8 +59,6 @@ with sync_playwright() as p:
             if parsed.path.endswith("/posts.json"):
                 page_number = int(parse_qs(parsed.query).get("page", ["1"])[0])
                 request_route.fulfill(json=[post(page_number * 1000 + i) for i in range(40)])
-            elif parsed.path.endswith("/notes.json"):
-                request_route.fulfill(json=[{"id": 1, "x": 100, "y": 120, "width": 240, "height": 100, "body": "Translated note", "is_active": True}])
             elif parsed.path.endswith("/related_tag.json"):
                 request_route.fulfill(json={"related_tags": [["related_tag", 0], ["another_tag", 0]]})
             elif parsed.path.endswith("/pools.json"):
@@ -122,43 +123,31 @@ with sync_playwright() as p:
     original_tag.hover()
     original_tag.get_by_title("Include original").click()
     assert page.locator(".filter-chip").filter(has_text="original").count() == 1
-    assert page.locator(".detail-panel.is-open").count() == 0
+    assert page.locator(".detail-workspace.is-open").count() == 0
 
-    page.locator(".post-image-link").first.click()
-    assert page.locator(".detail-panel.is-open").is_visible()
+    page.mouse.move(1, 1)
+    page.wait_for_timeout(200)
+    page.locator(".post-image-link").first.click(force=True)
+    assert page.locator(".detail-workspace.is-open").is_visible()
     assert page.locator(".post-information").get_by_text("Uploader", exact=True).is_visible()
     assert page.get_by_title("Open original post").get_attribute("href").startswith("https://danbooru.donmai.us/posts/")
     page.get_by_title("Close details").click()
     page.locator(".post-image-link").nth(1).click()
     assert page.locator(".detail-header h2").inner_text() == "#1001"
-    page.locator(".detail-image .media-placeholder").wait_for()
+    page.locator(".detail-media-stage .media-placeholder").wait_for()
     page.get_by_title("Close details").click()
     page.locator(".post-image-link").first.click()
     with page.expect_download() as download_info:
         page.keyboard.press("d")
     assert download_info.value.suggested_filename.endswith(".jpg")
-    page.locator("button[title='Open image viewer']").last.click()
-    page.locator(".yarl__container").wait_for()
-    viewer_image = page.locator(".yarl__slide_image").first
-    before_zoom = viewer_image.bounding_box()
+    viewer_image = page.locator(".detail-media-full")
+    viewer_image.wait_for()
+    before_zoom = viewer_image.get_attribute("style")
     page.mouse.move(720, 420)
     page.mouse.wheel(0, -700)
     page.wait_for_timeout(250)
-    after_zoom = viewer_image.bounding_box()
-    zoom_text = page.get_by_title("Zoom level").inner_text()
-    assert zoom_text != "100%", f"Mouse wheel did not change zoom level ({zoom_text})"
-    page.keyboard.press("Control+Shift+S")
-    page.wait_for_timeout(200)
-    assert page.get_by_title("Pause").is_visible(), "Slideshow shortcut did not start playback"
-    assert page.locator(".image-note").count() == 1
-    page.keyboard.press("ArrowRight")
-    page.locator(".viewer-video").wait_for()
-    page.keyboard.press("ArrowLeft")
-    page.locator(".image-note").wait_for()
-    download_count = len(downloads)
-    page.keyboard.press("d")
-    page.wait_for_timeout(250)
-    assert len(downloads) == download_count, "D downloaded while the detail drawer was not the active view"
+    after_zoom = viewer_image.get_attribute("style")
+    assert after_zoom != before_zoom, "Mouse wheel did not change detail media zoom"
     page.screenshot(path=ARTIFACTS / "phase3-desktop.png", full_page=True)
     page.keyboard.press("Escape")
 
@@ -166,6 +155,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
     page.screenshot(path=ARTIFACTS / "phase3-mobile.png", full_page=True)
     assert page.locator("body").evaluate("el => el.scrollWidth <= window.innerWidth")
+    assert not unhandled_rejections, "Unhandled rejections: " + " | ".join(unhandled_rejections)
     assert not errors, "Browser errors: " + " | ".join(errors)
-    print("phase3 acceptance passed: virtual grid, 3-item selection, detail, slideshow, notes, responsive layout")
+    print("phase3 acceptance passed: virtual grid, 3-item selection, detail media, download, responsive layout")
     browser.close()

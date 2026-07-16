@@ -6,6 +6,7 @@ import { useFilterStore } from '../stores/filter-store';
 import { usePostStore } from '../stores/post-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { useUiStore } from '../stores/ui-store';
+import { runAsync } from '../services/notifications';
 
 function isTyping(target: EventTarget | null) {
   const element = target as HTMLElement | null;
@@ -26,12 +27,12 @@ export function useKeyboard() {
       if (event.ctrlKey && key === 'd') {
         event.preventDefault();
         const selected = postState.posts.filter((post) => postState.selectedPostKeys.includes(`${post.source}:${post.id}`));
-        if (selected.length) void downloadPosts(selected, 'full', settings.downloadRule);
+        if (selected.length) runAsync('download', downloadPosts(selected, 'full', settings.downloadRule));
         return;
       }
       if (key === 'escape') { if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
-      if (key === 'f' && current) { void useFavoriteStore.getState().toggleLocal(current); return; }
-      if (key === 'd' && current && ui.detailOpen) { void downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule); return; }
+      if (key === 'f' && current) { runAsync('storage', useFavoriteStore.getState().toggleLocal(current)); return; }
+      if (key === 'd' && current && ui.detailOpen) { runAsync('download', downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule)); return; }
       if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen) {
         event.preventDefault();
         if (!event.repeat) void postState.navigateDetail(key === 'arrowright' ? 1 : -1);
@@ -40,7 +41,7 @@ export function useKeyboard() {
       if ((key === 'arrowup' || key === 'arrowdown') && current) {
         const credential = settings.credentials[current.source];
         const adapter = getBooruAdapter(current.source);
-        if (credential?.username && credential.apiKey && adapter.vote) { event.preventDefault(); void adapter.vote(current.id, key === 'arrowup' ? 1 : -1, credential); }
+        if (credential?.username && credential.apiKey && adapter.vote) { event.preventDefault(); runAsync('api', adapter.vote(current.id, key === 'arrowup' ? 1 : -1, credential)); }
         return;
       }
       if (key === 's') { ui.toggleSidebar(); return; }

@@ -9,7 +9,6 @@ export const postMessages = {
     score: 'score',
     addToFavoriteGroup: 'Add to favorite group',
     noFavoriteGroups: 'No favorite groups',
-    openImageViewer: 'Open image viewer',
     removeFromLocalFavorites: 'Remove from local favorites',
     saveToLocalFavorites: 'Save to local favorites',
     postTags: 'Post tags',
@@ -77,8 +76,6 @@ export const postMessages = {
     actionFailed: 'Action failed',
     closeDetails: 'Close details',
     postRecord: 'POST RECORD',
-    openImageViewer: 'Open image viewer',
-    openViewer: 'Open viewer',
     savedLocally: 'Saved locally',
     saveLocally: 'Save locally',
     apiCredentialsRequired: 'API credentials required',
@@ -110,10 +107,5 @@ export const postMessages = {
   mediaPreview: {
     unavailable: 'Preview unavailable',
     noMediaData: 'No media data',
-  },
-  viewer: {
-    zoomLevel: 'Zoom level',
-    slideshowInterval: 'Slideshow interval',
-    translationNotes: 'Translation notes',
   },
 } as const;

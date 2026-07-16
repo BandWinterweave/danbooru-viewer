@@ -8,6 +8,7 @@ import { SearchBar } from '../search/SearchBar';
 import { AdvancedFilter } from '../search/AdvancedFilter';
 import { useUiStore } from '../../stores/ui-store';
 import { shellMessages } from '../../i18n/en-shell';
+import { runAsync } from '../../services/notifications';
 
 export function Header() {
   const theme = useSettingsStore((state) => state.theme);
@@ -17,13 +18,12 @@ export function Header() {
   const credential = useSettingsStore((state) => state.credentials[state.activeSource]);
   const filtersOpen = useUiStore((state) => state.advancedFiltersOpen);
   const toggleFilters = useUiStore((state) => state.toggleAdvancedFilters);
-  const shortcutNotice = useUiStore((state) => state.shortcutNotice);
   const hideUnavailablePreviews = useSettingsStore((state) => state.hideUnavailablePreviews);
   const setHideUnavailablePreviews = useSettingsStore((state) => state.setHideUnavailablePreviews);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
   const openOptions = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) void chrome.runtime.openOptionsPage();
+    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) runAsync('api', chrome.runtime.openOptionsPage());
     else window.open('/src/options/index.html', '_blank', 'noopener,noreferrer');
   };
   const focusSearch = () => searchAreaRef.current?.querySelector('input')?.focus();
@@ -52,7 +52,6 @@ export function Header() {
       </div>
       <AdvancedFilter open={filtersOpen} />
       <FilterChipBar onAddFilter={focusSearch} />
-      {shortcutNotice && <div className="shortcut-notice" role="status">{shortcutNotice}</div>}
     </header>
   );
 }

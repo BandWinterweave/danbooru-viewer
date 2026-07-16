@@ -20,7 +20,7 @@ Danbooru Viewer provides one consistent interface for searching, inspecting, col
 
 - Five Booru sources behind a normalized browsing interface
 - Tag search with autocomplete, include/exclude chips, quick tags, and reusable filter presets
-- `General`, `Sensitive`, `Questionable`, and `Explicit` rating filters, translated to each source's rating vocabulary
+- `General`, `Sensitive`, `Questionable`, and `Explicit` rating filters, translated to each source's rating vocabulary; first installations default to `General` only
 - Score, date, minimum resolution, and sort-order filters
 - Virtualized grid, masonry, and information-dense list layouts with 2-8 columns
 - Responsive two-column layout on compact screens
@@ -74,7 +74,7 @@ Firefox 109 or newer is required by the extension manifest.
 ### Basic usage
 
 1. Select a source from the header.
-2. Enable a rating filter. Use `General` when you only want general-audience results.
+2. Choose a rating filter. New installations start with only `General` selected; select another rating to change the results.
 3. Enter one or more tags. Prefix a tag with `-` to exclude it.
 4. Open **Filters** for score, date, dimensions, and ordering.
 5. Select a card to inspect its media, metadata, and categorized tags.
@@ -128,7 +128,7 @@ Danbooru Viewer 是一款 Manifest V3 浏览器扩展，把新标签页变成统
 
 - 统一接入五个 Booru 图源
 - 标签自动补全、包含/排除条件、快捷标签和可复用筛选预设
-- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级过滤，并自动转换为各图源的评级语法
+- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级过滤，并自动转换为各图源的评级语法；首次安装仅默认启用 `General`
 - 按评分、日期、最低分辨率和顺序进行高级筛选
 - 虚拟滚动的网格、瀑布流和信息列表布局，支持 2-8 列
 - 窄屏自动切换为双列布局
@@ -182,7 +182,7 @@ npm run build:firefox  # Firefox -> dist-firefox/
 ### 基本使用
 
 1. 在顶部选择图源。
-2. 启用评级过滤；只浏览适合一般受众的内容时选择 `General`。
+2. 选择评级过滤；首次安装仅默认选中 `General`，可手动改选其他评级。
 3. 输入一个或多个标签；在标签前加 `-` 可排除该标签。
 4. 打开 **Filters** 设置评分、日期、尺寸和排序。
 5. 选择图片卡片，查看媒体、元数据和分类标签。

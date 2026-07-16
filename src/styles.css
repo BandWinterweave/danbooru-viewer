@@ -408,7 +408,6 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .relation-posts button { position: relative; aspect-ratio: 1; padding: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; cursor: pointer; }
 .relation-posts img { width: 100%; height: 100%; object-fit: cover; }
 .relation-posts span { position: absolute; right: 2px; bottom: 2px; padding: 2px; background: rgb(0 0 0 / 70%); color: white; font-size: 7px; }
-.shortcut-notice { position: absolute; top: 100%; right: 14px; max-width: 390px; padding: 8px 10px; border: 1px solid var(--amber); border-radius: 4px; background: var(--amber-soft); color: var(--amber); font-size: 10px; box-shadow: var(--shadow); }
 
 .settings-page { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 55px 0; }
 .settings-page > header { padding-bottom: 28px; border-bottom: 2px solid var(--ink); display: flex; align-items: center; gap: 13px; }

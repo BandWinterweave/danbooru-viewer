@@ -107,7 +107,6 @@ export const shellMessages = {
     downloadsAndPlayback: 'Downloads and playback',
     filenameVariables: 'Filename variables: {id}, {tags}, {artist}, {rating}, {source}, {size}.',
     filenameRule: 'Filename rule',
-    slideshowInterval: 'Slideshow interval (seconds)',
     enableKeyboardShortcuts: 'Enable keyboard shortcuts',
     tagCopy: 'Tag copy',
     tagCopyDescription: 'Choose which Danbooru tag categories are copied and how prompt syntax is formatted.',

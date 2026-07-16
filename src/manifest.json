@@ -52,12 +52,6 @@
     "page": "src/options/index.html",
     "open_in_tab": true
   },
-  "commands": {
-    "toggle-slideshow": {
-      "suggested_key": { "default": "Ctrl+Shift+S", "mac": "Command+Shift+S" },
-      "description": "__MSG_toggleSlideshow__"
-    }
-  },
   "browser_specific_settings": {
     "gecko": {
       "id": "danbooru-viewer@example.com",

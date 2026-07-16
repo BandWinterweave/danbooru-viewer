@@ -13,6 +13,8 @@ import { isVideoPost, postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { postMessages } from '../../i18n/en-posts';
 import { usePostStore } from '../../stores/post-store';
+import { runAsync } from '../../services/notifications';
+import { safeHttpUrl } from '../../services/safe-url';
 
 const categories: { key: TagCategory; label: string }[] = [
   { key: 'artist', label: postMessages.detail.categories.artist },
@@ -32,12 +34,13 @@ function formatBytes(bytes: number) {
 function PostInformation({ post }: { post: UnifiedPost }) {
   const isDanbooru = post.source === 'danbooru';
   const uploaderUrl = post.source === 'danbooru' && post.uploaderId ? `https://danbooru.donmai.us/users/${post.uploaderId}` : undefined;
+  const sourceUrl = safeHttpUrl(post.sourceUrl);
   return <section className={`post-information post-information--${post.source}`}><h3>{postMessages.detail.information} <span>{post.source}</span></h3><dl>
     <div><dt>{postMessages.detail.id}</dt><dd><a href={postPageUrl(post)} target="_blank" rel="noreferrer">{post.id}</a></dd></div>
     <div><dt>{postMessages.detail.sourceLabels[post.source]}</dt><dd>{uploaderUrl ? <a href={uploaderUrl} target="_blank" rel="noreferrer">{post.uploader}</a> : post.uploader}</dd></div>
     <div><dt>{postMessages.detail.date}</dt><dd title={new Date(post.createdAt).toLocaleString()}>{postMessages.detail.relativeDate(post.createdAt)}</dd></div>
     <div><dt>{postMessages.detail.size}</dt><dd>{post.fileSize ? `${formatBytes(post.fileSize)} · ` : ''}{post.fileExt ? `.${post.fileExt}` : postMessages.common.unknown} <span>({post.imageWidth || '?'} × {post.imageHeight || '?'})</span></dd></div>
-    {post.sourceUrl && <div><dt>{postMessages.detail.source}</dt><dd><a href={post.sourceUrl} target="_blank" rel="noreferrer">{post.sourceUrl.replace(/^https?:\/\//, '')}</a></dd></div>}
+    {sourceUrl && <div><dt>{postMessages.detail.source}</dt><dd><a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl.replace(/^https?:\/\//, '')}</a></dd></div>}
     <div><dt>{postMessages.detail.rating}</dt><dd>{postMessages.detail.ratings[post.rating]}</dd></div>
     <div><dt>{postMessages.detail.score}</dt><dd>{post.score} {isDanbooru && <span>({postMessages.detail.voteSummary(post.upScore, post.downScore)})</span>}</dd></div>
     {isDanbooru && <div><dt>{postMessages.detail.favorites}</dt><dd>{post.favCount}</dd></div>}
@@ -73,7 +76,6 @@ function ZoomableMedia({ post, quality }: { post: UnifiedPost; quality: DetailIm
 
   const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
   const zoom = (event: React.WheelEvent) => {
-    event.preventDefault();
     setScale((current) => Math.min(20, Math.max(.1, current * Math.exp(-event.deltaY * .0015))));
   };
   const startDrag = (event: React.PointerEvent) => {
@@ -144,7 +146,7 @@ export function PostDetail() {
   }, [open]);
 
   useEffect(() => {
-    if (open && post) void enrichTags(post);
+    if (open && post) runAsync('api', enrichTags(post));
   }, [enrichTags, open, post?.id, post?.source]);
 
   useEffect(() => {
@@ -188,7 +190,7 @@ export function PostDetail() {
           <button className="icon-button" title={postMessages.detail.closeDetails} onClick={close}><X size={18} /></button>
         </div>
         <div className="detail-actions">
-          <button className={isLocal ? 'is-active' : ''} onClick={() => void toggleLocal(post)}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
+          <button className={isLocal ? 'is-active' : ''} onClick={() => void runAction(() => toggleLocal(post))}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
           <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !adapter?.addFavorite} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !adapter?.addFavorite ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
           <DownloadMenu post={post} />
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.upvote} onClick={() => void runAction(() => adapter!.vote!(post.id, 1, credential!))}><ArrowUp size={15} /></button>
@@ -197,7 +199,7 @@ export function PostDetail() {
           <a href={postPageUrl(post)} target="_blank" rel="noreferrer" title={postMessages.detail.openOriginalPost}><ExternalLink size={15} /></a>
         </div>
         {actionError && <p className="action-error">{actionError}</p>}
-        {isLocal && groups.length > 0 && <div className="group-picker"><span>{postMessages.detail.addToGroup}</span>{groups.map((group) => { const key = `${post.source}:${post.id}`; const selected = group.postKeys.includes(key); return <button className={selected ? 'is-active' : ''} key={group.id} onClick={() => void toggleInGroup(group.id, post)}>{group.name}</button>; })}</div>}
+        {isLocal && groups.length > 0 && <div className="group-picker"><span>{postMessages.detail.addToGroup}</span>{groups.map((group) => { const key = `${post.source}:${post.id}`; const selected = group.postKeys.includes(key); return <button className={selected ? 'is-active' : ''} key={group.id} onClick={() => void runAction(() => toggleInGroup(group.id, post))}>{group.name}</button>; })}</div>}
         <div className="detail-stats">
           <div><span>{postMessages.detail.score}</span><strong>{post.score}</strong></div>
           <div><span>{post.source === 'danbooru' ? postMessages.detail.favorites : post.source === 'yandere' ? postMessages.detail.author : postMessages.detail.owner}</span><strong>{post.source === 'danbooru' && <Heart size={14} />}{post.source === 'danbooru' ? post.favCount : post.uploader}</strong></div>

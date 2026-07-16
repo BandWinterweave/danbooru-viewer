@@ -1,4 +1,4 @@
-import type { ApiProxyRequest, ApiProxyResponse } from '../types/api';
+import type { ApiProxyResponse } from '../types/api';
 import { actionMessages } from '../i18n/en-actions';
 
 const ALLOWED_ORIGINS = new Set([
@@ -9,63 +9,94 @@ const ALLOWED_ORIGINS = new Set([
   'https://api.rule34.xxx',
 ]);
 const CACHE_TTL = 120_000;
+const REQUEST_TIMEOUT = 15_000;
+const MAX_BODY_LENGTH = 1_000_000;
+const ALLOWED_HEADERS = new Set(['accept', 'authorization', 'content-type']);
 const cache = new Map<string, { expiresAt: number; value: unknown }>();
 const pending = new Map<string, Promise<ApiProxyResponse>>();
 
-export async function proxyRequest(message: ApiProxyRequest): Promise<ApiProxyResponse> {
-  const { url: rawUrl, method = 'GET', headers = {}, body } = message.payload;
+function invalid(status: number, error: string): ApiProxyResponse { return { ok: false, status, error }; }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateMessage(message: unknown) {
+  if (!isRecord(message) || message.type !== 'API_REQUEST' || !isRecord(message.payload)) return invalid(400, 'Invalid API request payload');
+  const { url: rawUrl, method: rawMethod = 'GET', headers: rawHeaders = {}, body } = message.payload;
+  if (typeof rawUrl !== 'string' || rawUrl.length > 8192) return invalid(400, 'Invalid request URL');
+  if (rawMethod !== 'GET' && rawMethod !== 'POST' && rawMethod !== 'DELETE') return invalid(405, 'Method is not allowed');
+  if (!isRecord(rawHeaders)) return invalid(400, 'Invalid request headers');
   let url: URL;
   try {
     url = new URL(rawUrl);
   } catch {
-    return { ok: false, status: 400, error: 'Invalid request URL' };
+    return invalid(400, 'Invalid request URL');
   }
-
-  if (!ALLOWED_ORIGINS.has(url.origin) || url.protocol !== 'https:') {
-    return { ok: false, status: 403, error: 'Host is not allowed' };
+  if (!ALLOWED_ORIGINS.has(url.origin) || url.protocol !== 'https:' || url.username || url.password) return invalid(403, 'Host is not allowed');
+  const methods = url.origin === 'https://danbooru.donmai.us' ? ['GET', 'POST', 'DELETE'] : url.origin === 'https://gelbooru.com' ? ['GET', 'POST'] : ['GET'];
+  if (!methods.includes(rawMethod)) return invalid(405, 'Method is not allowed');
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(rawHeaders)) {
+    const normalized = name.toLowerCase();
+    if (!ALLOWED_HEADERS.has(normalized) || typeof value !== 'string' || value.length > 4096 || /[\r\n]/.test(value)) return invalid(400, 'Invalid request headers');
+    headers[normalized === 'authorization' ? 'Authorization' : normalized === 'content-type' ? 'Content-Type' : 'Accept'] = value;
   }
-  if (!['GET', 'POST', 'DELETE'].includes(method)) return { ok: false, status: 405, error: 'Method is not allowed' };
+  if (headers.Authorization && (url.origin !== 'https://danbooru.donmai.us' || !/^Basic [A-Za-z0-9+/]+=*$/.test(headers.Authorization))) return invalid(400, 'Invalid authorization header');
+  if (body !== undefined && (typeof body !== 'string' || body.length > MAX_BODY_LENGTH || rawMethod !== 'POST')) return invalid(400, 'Invalid request body');
+  if (body && !['application/json', 'application/x-www-form-urlencoded'].some((type) => headers['Content-Type']?.toLowerCase().startsWith(type))) return invalid(400, 'Invalid request content type');
+  return { url, method: rawMethod, headers, body: body as string | undefined };
+}
 
-  const cacheKey = `${method}:${url.toString()}:${headers.Authorization ? 'authenticated' : 'public'}`;
+export async function proxyRequest(message: unknown): Promise<ApiProxyResponse> {
+  const validated = validateMessage(message);
+  if ('ok' in validated) return validated;
+  const { url, method, headers, body } = validated;
+
   const randomQuery = url.searchParams.get('tags')?.includes('order:random')
     || url.searchParams.get('tags')?.includes('sort:random')
     || false;
-  const cacheable = method === 'GET' && !headers.Authorization && !randomQuery;
+  const sensitiveQuery = url.searchParams.has('api_key') || url.searchParams.has('user_id');
+  const cacheable = method === 'GET' && !headers.Authorization && !sensitiveQuery && !randomQuery;
+  const cacheKey = cacheable ? `${method}:${url.toString()}` : '';
   const cached = cacheable ? cache.get(cacheKey) : undefined;
   if (cached && cached.expiresAt > Date.now()) return { ok: true, status: 200, data: cached.value };
   const pendingRequest = cacheable ? pending.get(cacheKey) : undefined;
   if (pendingRequest) return pendingRequest;
 
-  const request = performFetch(url, method, headers, body, cacheable, cacheKey);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  const request = performFetch(url, method, headers, body, cacheable, cacheKey, controller.signal).finally(() => clearTimeout(timeout));
   if (cacheable) {
     pending.set(cacheKey, request);
-    void request.finally(() => pending.delete(cacheKey));
+    void request.finally(() => pending.delete(cacheKey)).catch(() => undefined);
   }
   return request;
 }
 
-async function performFetch(url: URL, method: string, headers: Record<string, string>, body: string | undefined, cacheable: boolean, cacheKey: string): Promise<ApiProxyResponse> {
+async function performFetch(url: URL, method: string, headers: Record<string, string>, body: string | undefined, cacheable: boolean, cacheKey: string, signal: AbortSignal): Promise<ApiProxyResponse> {
   try {
-    const response = await fetch(url, { method, headers, body, cache: cacheable ? 'default' : 'no-store', credentials: url.origin === 'https://danbooru.donmai.us' ? 'include' : 'omit' });
+    const response = await fetch(url, { method, headers, body, signal, cache: cacheable ? 'default' : 'no-store', credentials: url.origin === 'https://danbooru.donmai.us' && method === 'GET' && !headers.Authorization ? 'include' : 'omit' });
+    if (response.redirected && response.url && new URL(response.url).origin !== url.origin) return invalid(403, 'Redirect host is not allowed');
     const contentType = response.headers.get('content-type') ?? '';
     const responseText = response.status === 204 ? '' : await response.text();
     const htmlResponse = contentType.includes('text/html') || /^\s*<!doctype html/i.test(responseText);
     if (htmlResponse) {
       const cloudflare = url.origin === 'https://danbooru.donmai.us' && /Just a moment|challenges\.cloudflare\.com|cf-chl-/i.test(responseText);
       if (cloudflare) {
-        const tabResponse = await fetchFromDanbooruTab(url, method, headers, body);
+        const tabResponse = await fetchFromDanbooruTab(url, method, headers, body, signal);
         if (tabResponse) {
           const result = finalizeResponse(url, method, cacheable, cacheKey, tabResponse.status, tabResponse.statusText, tabResponse.contentType, tabResponse.text);
           if (result.ok) return result;
         }
-        const navigationResponse = await navigateDanbooruApi(url, method, headers);
+        const navigationResponse = await navigateDanbooruApi(url, method, headers, signal);
         if (navigationResponse) return finalizeResponse(url, method, cacheable, cacheKey, navigationResponse.status, navigationResponse.statusText, navigationResponse.contentType, navigationResponse.text);
       }
       return { ok: false, status: response.status, error: cloudflare ? actionMessages.network.danbooruChallenge : actionMessages.network.unexpectedHtml(url.hostname) };
     }
     return finalizeResponse(url, method, cacheable, cacheKey, response.status, response.statusText, contentType, responseText);
   } catch (error) {
-    return { ok: false, status: 0, error: error instanceof Error ? error.message : 'Network request failed' };
+    return invalid(0, signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Request timed out' : 'Network request failed');
   }
 }
 
@@ -77,7 +108,7 @@ function finalizeResponse(url: URL, method: string, cacheable: boolean, cacheKey
     const cloudflare = url.origin === 'https://danbooru.donmai.us' && /Just a moment|challenges\.cloudflare\.com|cf-chl-/i.test(responseText);
     return { ok: false, status, error: cloudflare ? actionMessages.network.danbooruChallenge : actionMessages.network.unexpectedHtml(url.hostname) };
   }
-  if (status < 200 || status >= 300) return { ok: false, status, error: responseText.slice(0, 500) || actionMessages.network.requestFailed(status, statusText) };
+  if (status < 200 || status >= 300) return { ok: false, status, error: actionMessages.network.requestFailed(status, statusText) };
   try {
     const data: unknown = status === 204 ? null : contentType.includes('json') ? (responseText.trim() ? JSON.parse(responseText) : []) : responseText;
     if (cacheable) cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL, value: data });
@@ -88,32 +119,45 @@ function finalizeResponse(url: URL, method: string, cacheable: boolean, cacheKey
   }
 }
 
-async function waitForTab(tabId: number) {
-  const tab = await chrome.tabs.get(tabId);
+function abortError() { return new DOMException('Request timed out', 'AbortError'); }
+
+async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) throw abortError();
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => { cleanup(); reject(abortError()); };
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    signal.addEventListener('abort', abort, { once: true });
+    void promise.then((value) => { cleanup(); resolve(value); }, (error) => { cleanup(); reject(error); });
+  });
+}
+
+async function waitForTab(tabId: number, signal: AbortSignal) {
+  const tab = await withAbort(chrome.tabs.get(tabId), signal);
   if (tab.status === 'complete') return;
   await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => { cleanup(); reject(new Error('Danbooru tab did not finish loading')); }, 15_000);
+    const abort = () => { cleanup(); reject(abortError()); };
     const listener = (updatedId: number, changeInfo: chrome.tabs.TabChangeInfo) => { if (updatedId === tabId && changeInfo.status === 'complete') { cleanup(); resolve(); } };
-    const cleanup = () => { clearTimeout(timeout); chrome.tabs.onUpdated.removeListener(listener); };
+    const cleanup = () => { signal.removeEventListener('abort', abort); chrome.tabs.onUpdated.removeListener(listener); };
+    signal.addEventListener('abort', abort, { once: true });
     chrome.tabs.onUpdated.addListener(listener);
   });
 }
 
-async function fetchFromDanbooruTab(url: URL, method: string, headers: Record<string, string>, body?: string): Promise<TabFetchResponse | null> {
-  if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting) return null;
+async function fetchFromDanbooruTab(url: URL, method: string, headers: Record<string, string>, body: string | undefined, signal: AbortSignal): Promise<TabFetchResponse | null> {
+  if (method !== 'GET' || typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting) return null;
   if (headers.Authorization) return null;
   let createdTabId: number | undefined;
   try {
-    const existing = await chrome.tabs.query({ url: ['https://danbooru.donmai.us/*'] });
+    const existing = await withAbort(chrome.tabs.query({ url: ['https://danbooru.donmai.us/*'] }), signal);
     let tabId = existing.find((tab) => typeof tab.id === 'number')?.id;
     if (tabId === undefined) {
-      const tab = await chrome.tabs.create({ url: 'https://danbooru.donmai.us/', active: false });
+      const tab = await withAbort(chrome.tabs.create({ url: 'https://danbooru.donmai.us/', active: false }), signal);
       tabId = tab.id;
       createdTabId = tabId;
     }
     if (tabId === undefined) return null;
-    await waitForTab(tabId);
-    const result = await chrome.scripting.executeScript({
+    await waitForTab(tabId, signal);
+    const result = await withAbort(chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',
       args: [url.toString(), method, Object.fromEntries(Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization')), body],
@@ -121,32 +165,34 @@ async function fetchFromDanbooruTab(url: URL, method: string, headers: Record<st
         const response = await fetch(requestUrl, { method: requestMethod, headers: requestHeaders, body: requestBody, credentials: 'include' });
         return { status: response.status, statusText: response.statusText, contentType: response.headers.get('content-type') ?? '', text: response.status === 204 ? '' : await response.text() };
       },
-    });
+    }), signal);
     return result[0]?.result ?? null;
   } catch {
+    if (signal.aborted) throw abortError();
     return null;
   } finally {
     if (createdTabId !== undefined) void chrome.tabs.remove(createdTabId).catch(() => undefined);
   }
 }
 
-async function navigateDanbooruApi(url: URL, method: string, headers: Record<string, string>): Promise<TabFetchResponse | null> {
+async function navigateDanbooruApi(url: URL, method: string, headers: Record<string, string>, signal: AbortSignal): Promise<TabFetchResponse | null> {
   if (method !== 'GET' || headers.Authorization || typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting) return null;
   let tabId: number | undefined;
   try {
-    const tab = await chrome.tabs.create({ url: url.toString(), active: false });
+    const tab = await withAbort(chrome.tabs.create({ url: url.toString(), active: false }), signal);
     tabId = tab.id;
     if (tabId === undefined) return null;
-    await waitForTab(tabId);
-    const result = await chrome.scripting.executeScript({
+    await waitForTab(tabId, signal);
+    const result = await withAbort(chrome.scripting.executeScript({
       target: { tabId },
       world: 'ISOLATED',
       func: () => document.body?.innerText ?? document.documentElement?.textContent ?? '',
-    });
+    }), signal);
     const text = result[0]?.result?.trim() ?? '';
     const json = text.startsWith('[') || text.startsWith('{');
     return { status: json ? 200 : 403, statusText: json ? 'OK' : 'Forbidden', contentType: json ? 'application/json' : 'text/html', text };
   } catch {
+    if (signal.aborted) throw abortError();
     return null;
   } finally {
     if (tabId !== undefined) void chrome.tabs.remove(tabId).catch(() => undefined);

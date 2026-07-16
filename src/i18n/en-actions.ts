@@ -26,21 +26,26 @@ export const actionMessages = {
     importComplete: 'Favorites imported',
     importFailed: 'Could not import favorites',
     invalidFile: 'Invalid favorites file',
+    notReady: 'Favorites could not be loaded. Reload the viewer before making changes.',
     remoteUnavailable: 'This source needs API credentials or does not support remote favorites',
     remoteRemoveUnavailable: 'This source cannot remove remote favorites',
-  },
-  shortcuts: {
-    firefoxOccupied: 'Ctrl+Shift+S is occupied. Reassign it in Firefox extension shortcuts.',
-    chromeOccupied: 'Ctrl+Shift+S is occupied. Reassign it at chrome://extensions/shortcuts.',
   },
   network: {
     danbooruChallenge: 'Danbooru blocked the extension request. Keep https://danbooru.donmai.us open in a normal tab, reload this extension at chrome://extensions, then return here and select Try again.',
     unexpectedHtml: (source: string) => `${source} returned a web page instead of API data. Open the source website once, then try again.`,
     requestFailed: (status: number, statusText: string) => `Request failed (${status}${statusText ? ` ${statusText}` : ''})`,
   },
+  errors: {
+    api: 'Request failed',
+    storage: 'Local data could not be saved',
+    download: 'Download failed',
+    permission: 'Permission denied',
+    fallback: 'The operation could not be completed.',
+  },
   content: {
     copyTags: 'Copy tags',
     copyTagsTitle: "Copy this post's tags",
     copied: 'Copied',
+    copyFailed: 'Copy failed',
   },
 } as const;

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { proxyRequest } from '../../src/background/api-proxy';
 
 describe('background API proxy', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
   it('rejects requests to hosts outside the allowlist', async () => {
     const response = await proxyRequest({
       type: 'API_REQUEST',
@@ -14,9 +14,53 @@ describe('background API proxy', () => {
 
   it('allows a configured source and forwards authenticated writes', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
-    const response = await proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://danbooru.donmai.us/favorites.json?post_id=7', method: 'POST', headers: { Authorization: 'Basic test' }, body: '{}' } });
+    const response = await proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://danbooru.donmai.us/favorites.json?post_id=7', method: 'POST', headers: { Authorization: 'Basic test', 'Content-Type': 'application/json' }, body: '{}' } });
     expect(response).toMatchObject({ ok: true, status: 204 });
-    expect(fetch).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({ method: 'POST', body: '{}', headers: { Authorization: 'Basic test' } }));
+    expect(fetch).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({ method: 'POST', body: '{}', headers: { Authorization: 'Basic test', 'Content-Type': 'application/json' }, signal: expect.any(AbortSignal) }));
+  });
+
+  it.each([
+    [{ type: 'API_REQUEST' }, 400],
+    [{ type: 'API_REQUEST', payload: { url: 'https://safebooru.org/', method: 'POST' } }, 405],
+    [{ type: 'API_REQUEST', payload: { url: 'https://yande.re/', headers: { Cookie: 'secret' } } }, 400],
+    [{ type: 'API_REQUEST', payload: { url: 'https://yande.re/', method: 'GET', body: '{}' } }, 400],
+  ])('rejects malformed request payloads', async (message, status) => {
+    await expect(proxyRequest(message)).resolves.toMatchObject({ ok: false, status });
+  });
+
+  it('times out stalled requests with a structured response', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    }));
+    const request = proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://safebooru.org/index.php', method: 'GET' } });
+    await vi.advanceTimersByTimeAsync(15_000);
+    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request timed out' });
+  });
+
+  it('applies the same timeout to the Danbooru tab fallback', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('<!DOCTYPE html><title>Just a moment...</title>', { status: 403, headers: { 'Content-Type': 'text/html' } }));
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockResolvedValue({ id: 1 }),
+        get: vi.fn().mockResolvedValue({ id: 1, status: 'complete' }),
+        remove: vi.fn().mockResolvedValue(undefined),
+        onUpdated: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+      scripting: { executeScript: vi.fn(() => new Promise(() => undefined)) },
+    });
+    const request = proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://danbooru.donmai.us/posts.json', method: 'GET' } });
+    await vi.advanceTimersByTimeAsync(15_000);
+    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request timed out' });
+  });
+
+  it('does not deduplicate credential-bearing query requests', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const request = { type: 'API_REQUEST' as const, payload: { url: 'https://gelbooru.com/index.php?api_key=secret&user_id=7', method: 'GET' as const } };
+    await Promise.all([proxyRequest(request), proxyRequest(request)]);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('normalizes an empty JSON response to an empty collection', async () => {

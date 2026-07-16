@@ -24,13 +24,14 @@ export async function apiRequest<T>(url: URL, options: { method?: 'GET' | 'POST'
   const method = options.method ?? 'GET';
   const body = options.body instanceof URLSearchParams ? options.body.toString() : options.body ? JSON.stringify(options.body) : undefined;
   const headers: Record<string, string> = { ...authHeaders(options.credentials), ...(options.body instanceof URLSearchParams ? { 'Content-Type': 'application/x-www-form-urlencoded' } : options.body ? { 'Content-Type': 'application/json' } : {}) };
-  const requestKey = `${method}:${url.toString()}:${headers.Authorization ?? 'public'}:${body ?? ''}`;
-  if (method === 'GET') {
+  const sensitive = Boolean(headers.Authorization) || url.searchParams.has('api_key') || url.searchParams.has('user_id');
+  const requestKey = sensitive ? '' : `${method}:${url.toString()}`;
+  if (method === 'GET' && !sensitive) {
     const pending = pendingGetRequests.get(requestKey);
     if (pending) return pending as Promise<T>;
   }
   const request = performRequest<T>(url, method, headers, body);
-  if (method === 'GET') {
+  if (method === 'GET' && !sensitive) {
     pendingGetRequests.set(requestKey, request);
     void request.finally(() => pendingGetRequests.delete(requestKey)).catch(() => undefined);
   }

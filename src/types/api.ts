@@ -1,4 +1,4 @@
-import type { BooruSource, NoteRecord, PoolRecord, Rating, TagCategory, UnifiedPost } from './post';
+import type { BooruSource, PoolRecord, Rating, TagCategory, UnifiedPost } from './post';
 
 export interface SearchQuery {
   tags?: string;
@@ -68,7 +68,6 @@ export interface BooruAdapter {
   unvote?(postId: number, credentials: Credentials): Promise<void>;
   getComments?(postId: number, credentials?: Credentials): Promise<CommentRecord[]>;
   createComment?(postId: number, body: string, credentials: Credentials): Promise<CommentRecord>;
-  getNotes?(postId: number, credentials?: Credentials): Promise<NoteRecord[]>;
   getRelatedTags?(tag: string, credentials?: Credentials): Promise<RelatedTagRecord[]>;
   getPools?(ids: number[], credentials?: Credentials): Promise<PoolRecord[]>;
   getChildren?(postId: number, credentials?: Credentials): Promise<UnifiedPost[]>;

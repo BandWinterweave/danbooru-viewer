@@ -1,4 +1,5 @@
 import { createStore, del, entries, get, set } from 'idb-keyval';
+import { safeHttpUrl } from './safe-url';
 
 const TTL = 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 240;
@@ -18,6 +19,7 @@ async function prune() {
 }
 
 async function resolveImageUrl(url: string): Promise<string> {
+  url = safeHttpUrl(url);
   if (!url || typeof indexedDB === 'undefined') return url;
   const existingObjectUrl = objectUrls.get(url);
   if (existingObjectUrl) return existingObjectUrl;
@@ -25,7 +27,7 @@ async function resolveImageUrl(url: string): Promise<string> {
     const cached = await get<CachedImage>(url, imageStore);
     if (cached && cached.expiresAt > Date.now()) {
       cached.accessedAt = Date.now();
-      void set(url, cached, imageStore);
+      await set(url, cached, imageStore);
       const objectUrl = URL.createObjectURL(cached.blob);
       objectUrls.set(url, objectUrl);
       return objectUrl;

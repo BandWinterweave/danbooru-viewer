@@ -33,7 +33,7 @@ export const useFilterStore = create<FilterStore>()(persist(
   (set, get) => ({
     searchText: '',
     activeFilters: [],
-    ratings: [],
+    ratings: ['g'],
     meta: {},
     presets: [],
     setSearchText: (searchText) => set({ searchText }),

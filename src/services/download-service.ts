@@ -2,6 +2,8 @@ import { createStore, get, set } from 'idb-keyval';
 import { actionMessages } from '../i18n/en-actions';
 import type { UnifiedPost } from '../types/post';
 import { displayImageUrl } from './api/image-url';
+import { safeHttpUrl } from './safe-url';
+import { reportOperationError } from './notifications';
 
 export type DownloadSize = 'playback' | 'full' | 'sample' | 'preview';
 
@@ -19,10 +21,10 @@ const memoryHistory = new Map<string, DownloadHistoryEntry>();
 function historyKey(post: UnifiedPost) { return post.md5 || `${post.source}:${post.id}`; }
 
 export function resolveDownloadUrl(post: UnifiedPost, size: DownloadSize) {
-  if (size === 'playback') return post.playbackUrl || post.fileUrl || post.sampleUrl || post.previewUrl;
-  if (size === 'preview') return post.previewUrl || post.sampleUrl || post.fileUrl;
-  if (size === 'sample') return post.sampleUrl || post.fileUrl || post.previewUrl;
-  return post.fileUrl || post.sampleUrl || post.previewUrl;
+  if (size === 'playback') return safeHttpUrl(post.playbackUrl || post.fileUrl || post.sampleUrl || post.previewUrl);
+  if (size === 'preview') return safeHttpUrl(post.previewUrl || post.sampleUrl || post.fileUrl);
+  if (size === 'sample') return safeHttpUrl(post.sampleUrl || post.fileUrl || post.previewUrl);
+  return safeHttpUrl(post.fileUrl || post.sampleUrl || post.previewUrl);
 }
 
 export function buildDownloadFilename(post: UnifiedPost, rule: string, size: DownloadSize = 'full') {
@@ -67,7 +69,7 @@ export async function downloadPost(post: UnifiedPost, size: DownloadSize = 'full
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
-  await recordDownload(post);
+  try { await recordDownload(post); } catch (error) { reportOperationError('storage', error); }
 }
 
 export async function downloadPosts(posts: UnifiedPost[], size: DownloadSize = 'full', rule = '{source}-{id}-{artist}'): Promise<void> {

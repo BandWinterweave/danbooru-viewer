@@ -13,6 +13,7 @@ import { postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { formatTagsForCopy } from '../../services/tag-copy';
 import { postMessages } from '../../i18n/en-posts';
+import { runAsync } from '../../services/notifications';
 
 function orderedTags(post: UnifiedPost) {
   const order = { artist: 0, character: 1, copyright: 2, general: 3, meta: 4 };
@@ -48,7 +49,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     event.stopPropagation();
     addTag(tag, mode);
   };
-  const favorite = (event: React.MouseEvent) => { event.stopPropagation(); void toggleLocal(post); };
+  const favorite = (event: React.MouseEvent) => { event.stopPropagation(); runAsync('storage', toggleLocal(post)); };
   const cancelClose = () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); };
   const cancelDwell = () => { if (dwellTimer.current) window.clearTimeout(dwellTimer.current); };
   const scheduleClose = () => { cancelDwell(); cancelClose(); if (tooltipOpen) closeTimer.current = window.setTimeout(() => { setTooltipOpen(false); setGroupMenuOpen(false); }, 140); };
@@ -57,17 +58,17 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     cursorPoint.current = { x: event.clientX, y: event.clientY };
     if (tooltipOpen) return;
     cancelDwell();
-    dwellTimer.current = window.setTimeout(() => { setPoint(cursorPoint.current); setTooltipOpen(true); void enrichTags(post); }, 700);
+    dwellTimer.current = window.setTimeout(() => { setPoint(cursorPoint.current); setTooltipOpen(true); runAsync('api', enrichTags(post)); }, 700);
   };
   const copyTags = (event: React.MouseEvent) => {
     event.stopPropagation();
     const text = formatTagsForCopy(post, { categories: copyTagCategories, useUnderscores: copyTagsUseUnderscores, escapeParentheses: copyTagsEscapeParentheses });
     if (!text) return;
-    void navigator.clipboard.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1200); }).catch(() => undefined);
+    runAsync('permission', navigator.clipboard.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1200); }));
   };
   useEffect(() => {
-    void hasDownloaded(post).then(setDownloaded);
-    const update = () => void hasDownloaded(post).then(setDownloaded);
+    void hasDownloaded(post).then(setDownloaded, () => setDownloaded(false));
+    const update = () => void hasDownloaded(post).then(setDownloaded, () => setDownloaded(false));
     window.addEventListener('danbooru-download-recorded', update);
     return () => { cancelDwell(); cancelClose(); window.removeEventListener('danbooru-download-recorded', update); };
   }, [post]);
@@ -89,7 +90,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
         <strong>{post.source} #{post.id}</strong>
         <span>{postMessages.card.score} {post.score}</span><span>{post.rating.toUpperCase()}</span><span>{post.fileSize ? `${(post.fileSize / 1024 / 1024).toFixed(1)} MB` : post.fileExt.toUpperCase()}</span><span>{post.imageWidth}×{post.imageHeight}</span>
         <div className="tooltip-actions">
-          <div className="card-group-control"><button title={postMessages.card.addToFavoriteGroup} onClick={(event) => { event.stopPropagation(); setGroupMenuOpen((value) => !value); }}><FolderPlus size={14} /></button>{groupMenuOpen && <div className="card-group-menu" onClick={(event) => event.stopPropagation()}>{groups.length ? groups.map((group) => { const selected = group.postKeys.includes(`${post.source}:${post.id}`); return <button className={selected ? 'is-selected' : ''} key={group.id} onClick={() => { void toggleInGroup(group.id, post); setGroupMenuOpen(false); }}>{selected && <Check size={10} />}{group.name}</button>; }) : <span>{postMessages.card.noFavoriteGroups}</span>}</div>}</div>
+          <div className="card-group-control"><button title={postMessages.card.addToFavoriteGroup} onClick={(event) => { event.stopPropagation(); setGroupMenuOpen((value) => !value); }}><FolderPlus size={14} /></button>{groupMenuOpen && <div className="card-group-menu" onClick={(event) => event.stopPropagation()}>{groups.length ? groups.map((group) => { const selected = group.postKeys.includes(`${post.source}:${post.id}`); return <button className={selected ? 'is-selected' : ''} key={group.id} onClick={() => { runAsync('storage', toggleInGroup(group.id, post)); setGroupMenuOpen(false); }}>{selected && <Check size={10} />}{group.name}</button>; }) : <span>{postMessages.card.noFavoriteGroups}</span>}</div>}</div>
           <DownloadMenu post={post} compact />
           <button className={isLocal ? 'is-local' : ''} title={isLocal ? postMessages.card.removeFromLocalFavorites : postMessages.card.saveToLocalFavorites} onClick={favorite}><Heart size={14} fill={isLocal ? 'currentColor' : 'none'} /></button>
         </div>
