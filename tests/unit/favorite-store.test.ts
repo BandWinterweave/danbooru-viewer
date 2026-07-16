@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('idb-keyval', () => ({ get: vi.fn(), set: vi.fn(), del: vi.fn() }));
+vi.mock('idb-keyval', () => ({ createStore: vi.fn(() => ({})), get: vi.fn(), getMany: vi.fn(), set: vi.fn(), setMany: vi.fn(), del: vi.fn() }));
 import { useFavoriteStore } from '../../src/stores/favorite-store';
 import { normalizePost } from '../../src/services/booru-adapters/danbooru';
 

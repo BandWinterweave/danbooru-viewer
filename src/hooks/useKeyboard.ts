@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { actionMessages } from '../i18n/en-actions';
 import { booruSources, getBooruAdapter } from '../services/booru-adapters';
 import { downloadPost, downloadPosts } from '../services/download-service';
 import { useFavoriteStore } from '../stores/favorite-store';
@@ -15,28 +14,13 @@ function isTyping(target: EventTarget | null) {
 
 export function useKeyboard() {
   useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.commands?.getAll) {
-      void chrome.commands.getAll().then((commands) => {
-        const slideshow = commands.find((command) => command.name === 'toggle-slideshow');
-        if (slideshow && !slideshow.shortcut) useUiStore.getState().setShortcutNotice(navigator.userAgent.includes('Firefox') ? actionMessages.shortcuts.firefoxOccupied : actionMessages.shortcuts.chromeOccupied);
-      });
-    }
     const onKeyDown = (event: KeyboardEvent) => {
       const settings = useSettingsStore.getState();
       if (!settings.keyboardEnabled || (isTyping(event.target) && !(event.ctrlKey && event.key.toLowerCase() === 'k'))) return;
       const key = event.key.toLowerCase();
       const ui = useUiStore.getState();
       const postState = usePostStore.getState();
-      const viewable = postState.posts.filter((post) => post.playbackUrl || post.fileUrl || post.sampleUrl || post.previewUrl);
-      const current = ui.viewerOpen ? viewable[ui.viewerIndex] ?? ui.currentPost : ui.currentPost;
-      if (event.ctrlKey && event.shiftKey && key === 's') {
-        event.preventDefault();
-        if (!ui.viewerOpen && current) ui.openViewer(current);
-        window.setTimeout(() => window.dispatchEvent(new Event('danbooru-toggle-slideshow')), 0);
-        return;
-      }
-      if (event.ctrlKey && event.shiftKey && key === 'f') { event.preventDefault(); ui.toggleAdvancedFilters(); return; }
-      if (event.ctrlKey && event.shiftKey && key === 'c') { event.preventDefault(); useFilterStore.getState().clearAll(); return; }
+      const current = ui.currentPost;
       if (event.ctrlKey && key === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('#main-search')?.focus(); return; }
       if (event.ctrlKey && key === 'a') { event.preventDefault(); postState.selectAll(); return; }
       if (event.ctrlKey && key === 'd') {
@@ -45,10 +29,9 @@ export function useKeyboard() {
         if (selected.length) void downloadPosts(selected, 'full', settings.downloadRule);
         return;
       }
-      if (key === 'escape') { if (ui.viewerOpen) ui.closeViewer(); else if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
+      if (key === 'escape') { if (ui.detailOpen) ui.closeDetail(); else useFilterStore.getState().clearAll(); return; }
       if (key === 'f' && current) { void useFavoriteStore.getState().toggleLocal(current); return; }
-      if (key === 'd' && current && ui.detailOpen && !ui.viewerOpen) { void downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule); return; }
-      if (ui.viewerOpen) return;
+      if (key === 'd' && current && ui.detailOpen) { void downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule); return; }
       if ((key === 'arrowleft' || key === 'arrowright') && current) {
         const index = postState.posts.findIndex((post) => post.id === current.id && post.source === current.source);
         const next = postState.posts[index + (key === 'arrowright' ? 1 : -1)];

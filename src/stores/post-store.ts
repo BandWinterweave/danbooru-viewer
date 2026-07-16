@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { getBooruAdapter } from '../services/booru-adapters';
 import type { SearchQuery } from '../types/api';
-import type { UnifiedPost } from '../types/post';
+import type { BooruSource, UnifiedPost } from '../types/post';
 import { useSettingsStore } from './settings-store';
 import { extensionStorage } from './storage';
 import { messages } from '../i18n/en';
 import { notify } from '../services/notifications';
 import { ApiRequestError } from '../services/api/client';
+import { enrichPostTags } from '../services/booru-adapters/tag-enrichment';
+import { useUiStore } from './ui-store';
 
 interface PostStore {
   posts: UnifiedPost[];
@@ -21,6 +23,7 @@ interface PostStore {
   search: (query: SearchQuery) => Promise<void>;
   loadMore: () => Promise<void>;
   retry: () => Promise<void>;
+  enrichTags: (post: UnifiedPost) => Promise<void>;
   toggleSelected: (post: UnifiedPost) => void;
   selectAll: () => void;
   clearSelection: () => void;
@@ -28,9 +31,8 @@ interface PostStore {
 
 let requestSequence = 0;
 
-function credentials() {
-  const { activeSource, credentials: allCredentials } = useSettingsStore.getState();
-  const value = allCredentials[activeSource];
+function credentials(source: BooruSource = useSettingsStore.getState().activeSource) {
+  const value = useSettingsStore.getState().credentials[source];
   return value?.username && value.apiKey ? value : undefined;
 }
 
@@ -65,6 +67,12 @@ export const usePostStore = create<PostStore>()(persist(
       }
     },
     retry: async () => { await get().search(get().query); },
+    enrichTags: async (post) => {
+      const enriched = await enrichPostTags(post, credentials(post.source));
+      set((state) => ({ posts: state.posts.map((item) => item.source === enriched.source && item.id === enriched.id ? enriched : item) }));
+      const current = useUiStore.getState().currentPost;
+      if (current?.source === enriched.source && current.id === enriched.id) useUiStore.getState().setCurrentPost(enriched);
+    },
     loadMore: async () => {
       const state = get();
       if (state.isLoading || state.isLoadingMore || !state.hasMore) return;

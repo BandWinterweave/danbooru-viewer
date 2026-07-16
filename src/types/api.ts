@@ -1,4 +1,4 @@
-import type { BooruSource, NoteRecord, PoolRecord, Rating, UnifiedPost } from './post';
+import type { BooruSource, NoteRecord, PoolRecord, Rating, TagCategory, UnifiedPost } from './post';
 
 export interface SearchQuery {
   tags?: string;
@@ -22,7 +22,7 @@ export interface PaginatedResult<T> {
 export interface TagAutocompleteResult {
   name: string;
   label: string;
-  category: number;
+  category: TagCategory;
   postCount: number;
 }
 

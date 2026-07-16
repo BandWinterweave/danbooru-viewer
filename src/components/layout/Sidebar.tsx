@@ -4,13 +4,17 @@ import { usePostStore } from '../../stores/post-store';
 import { useUiStore } from '../../stores/ui-store';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useSettingsStore } from '../../stores/settings-store';
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { displayImageUrl } from '../../services/api/image-url';
 import { FavoriteGroups } from '../favorites/FavoriteGroups';
 import { CachedImage } from '../posts/CachedImage';
 import { shellMessages } from '../../i18n/en-shell';
 import { actionMessages } from '../../i18n/en-actions';
 import { notify } from '../../services/notifications';
+import { getBooruAdapter } from '../../services/booru-adapters';
+import type { TagAutocompleteResult } from '../../types/api';
+import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
+import { rememberTagMetadata, tagCategoryFor } from '../../services/booru-adapters/tag-categories';
 
 export function Sidebar() {
   const open = useUiStore((state) => state.sidebarOpen);
@@ -25,13 +29,45 @@ export function Sidebar() {
   const quickTags = useSettingsStore((state) => state.quickTags);
   const addQuickTag = useSettingsStore((state) => state.addQuickTag);
   const removeQuickTag = useSettingsStore((state) => state.removeQuickTag);
+  const credentials = useSettingsStore((state) => state.credentials[state.activeSource]);
   const favorites = useFavoriteStore((state) => state.favorites);
   const exportJson = useFavoriteStore((state) => state.exportJson);
   const importJson = useFavoriteStore((state) => state.importJson);
   const openDetail = useUiStore((state) => state.openDetail);
   const fileRef = useRef<HTMLInputElement>(null);
+  const quickTagInputRef = useRef<HTMLInputElement>(null);
   const [quickTag, setQuickTag] = useState('');
+  const [quickTagSuggestions, setQuickTagSuggestions] = useState<TagAutocompleteResult[]>([]);
+  const [quickTagDropdownOpen, setQuickTagDropdownOpen] = useState(false);
   const submitQuickTag = (event: FormEvent) => { event.preventDefault(); addQuickTag(quickTag); setQuickTag(''); };
+
+  useEffect(() => {
+    const term = quickTag.trim();
+    if (term.length < 2) { setQuickTagSuggestions([]); return; }
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      const cached = await getCachedSuggestions(source, term);
+      if (cancelled) return;
+      if (cached?.items.length) { setQuickTagSuggestions(cached.items); setQuickTagDropdownOpen(true); }
+      if (cached && !cached.stale) return;
+      try {
+        const result = await getBooruAdapter(source).autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await Promise.all([
+          cacheSuggestions(source, term, result),
+          rememberTagMetadata(source, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
+        ]);
+        if (!cancelled) { setQuickTagSuggestions(result); setQuickTagDropdownOpen(true); }
+      } catch {
+        if (!cancelled && !cached) setQuickTagSuggestions([]);
+      }
+    }, 150);
+    return () => { cancelled = true; window.clearTimeout(timeout); };
+  }, [source, credentials, quickTag]);
+
+  const selectQuickTagSuggestion = (name: string) => {
+    setQuickTag(name);
+    setQuickTagDropdownOpen(false);
+  };
   const importFavorites = async (file: File) => {
     try {
       await importJson(file);
@@ -51,8 +87,20 @@ export function Sidebar() {
       </nav>
       <div className="sidebar-section">
         <h2>{shellMessages.sidebar.quickTags}</h2>
-        <form className="quick-tag-form" onSubmit={submitQuickTag}><input value={quickTag} placeholder={shellMessages.sidebar.addTagPlaceholder} aria-label={shellMessages.sidebar.newQuickTag} onChange={(event) => setQuickTag(event.target.value)} /><button title={shellMessages.sidebar.addQuickTag} disabled={!quickTag.trim()}><Plus size={12} /></button></form>
-        <div className="quick-tag-list">{quickTags.map((tag) => <span key={tag}><button onClick={() => addTag(tag, 'include')}>{tag.replaceAll('_', ' ')}</button><button title={shellMessages.sidebar.removeQuickTag(tag)} onClick={() => removeQuickTag(tag)}><X size={11} /></button></span>)}</div>
+        <div className="quick-tag-form-wrapper">
+          <form className="quick-tag-form" onSubmit={submitQuickTag}><input ref={quickTagInputRef} value={quickTag} placeholder={shellMessages.sidebar.addTagPlaceholder} aria-label={shellMessages.sidebar.newQuickTag} autoComplete="off" spellCheck={false} onChange={(event) => setQuickTag(event.target.value)} onFocus={() => setQuickTagDropdownOpen(quickTagSuggestions.length > 0)} onBlur={() => window.setTimeout(() => setQuickTagDropdownOpen(false), 120)} /><button title={shellMessages.sidebar.addQuickTag} disabled={!quickTag.trim()}><Plus size={12} /></button></form>
+          {quickTagDropdownOpen && quickTagSuggestions.length > 0 && (
+            <div className="quick-tag-suggestions" role="listbox">
+              {quickTagSuggestions.map((suggestion) => (
+                <button type="button" role="option" data-category={suggestion.category} key={suggestion.name} onMouseDown={() => selectQuickTagSuggestion(suggestion.name)}>
+                  <span>{suggestion.name.replaceAll('_', ' ')}</span>
+                  <small>{suggestion.postCount.toLocaleString()}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="quick-tag-list">{quickTags.map((tag) => { const category = tagCategoryFor(source, tag); return <span key={tag}><button data-category={category} onClick={() => addTag(tag, 'include')}><span className={`category-swatch category-${category}`} />{tag.replaceAll('_', ' ')}</button><button title={shellMessages.sidebar.removeQuickTag(tag)} onClick={() => removeQuickTag(tag)}><X size={11} /></button></span>; })}</div>
         {!quickTags.length && <p className="sidebar-empty">{shellMessages.sidebar.noQuickTags}</p>}
       </div>
       <div className="sidebar-section"><h2>{shellMessages.sidebar.filterPresets}</h2>{presets.filter((preset) => preset.sourceId === source).map((preset) => <div className="sidebar-list-item" key={preset.id}><button onClick={() => loadPreset(preset.id)}>{preset.name}</button><button title={shellMessages.sidebar.deletePreset(preset.name)} onClick={() => deletePreset(preset.id)}><Trash2 size={12} /></button></div>)}{!presets.some((preset) => preset.sourceId === source) && <p className="sidebar-empty">{shellMessages.sidebar.noSavedPresets}</p>}</div>

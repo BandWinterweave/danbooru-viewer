@@ -80,7 +80,7 @@ with sync_playwright() as p:
     assert copy_box and select_box and copy_box["x"] < select_box["x"]
     page.locator(".post-copy").first.click()
     page.get_by_label("Tags copied").wait_for()
-    assert page.evaluate("navigator.clipboard.readText()") == "sample_artist original 1girl highres"
+    assert page.evaluate("navigator.clipboard.readText()") == "sample_artist, original, 1girl, highres"
 
     # A quick control click must not open the dwell tooltip.
     page.locator(".post-select").first.click()

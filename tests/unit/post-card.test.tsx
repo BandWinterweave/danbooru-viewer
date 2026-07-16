@@ -38,7 +38,7 @@ const post = normalizePost({
 describe('PostCard', () => {
   beforeEach(() => {
     useFilterStore.setState({ searchText: '', activeFilters: [], ratings: [] });
-    useUiStore.setState({ detailOpen: false, viewerOpen: false, currentPost: null });
+    useUiStore.setState({ detailOpen: false, currentPost: null });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -66,12 +66,9 @@ describe('PostCard', () => {
     expect(useFilterStore.getState().activeFilters).toContainEqual(expect.objectContaining({ value: 'original', mode: 'exclude' }));
   });
 
-  it('opens details from the image and the viewer from the rating badge', () => {
+  it('opens details from the image', () => {
     render(<PostCard post={post} />);
     fireEvent.click(screen.getByLabelText('Open post details'));
-    expect(useUiStore.getState()).toMatchObject({ detailOpen: true, viewerOpen: false, currentPost: post });
-    useUiStore.setState({ detailOpen: false, viewerOpen: false, currentPost: null });
-    fireEvent.click(screen.getByTitle('Open image viewer'));
-    expect(useUiStore.getState()).toMatchObject({ detailOpen: false, viewerOpen: true, currentPost: post });
+    expect(useUiStore.getState()).toMatchObject({ detailOpen: true, currentPost: post });
   });
 });

@@ -8,6 +8,7 @@ import type {
 import type { Rating, TagCategory, UnifiedPost } from '../../types/post';
 import { apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
+import { rememberTagCategory, tagCategoryFromType } from './tag-categories';
 
 const BASE_URL = 'https://danbooru.donmai.us';
 
@@ -143,9 +144,9 @@ export const danbooruAdapter: BooruAdapter = {
     return items.map((item) => ({
       name: item.value ?? item.label?.replace(/<[^>]+>/g, '') ?? '',
       label: item.label ?? item.value ?? '',
-      category: item.category ?? 0,
+      category: tagCategoryFromType(item.category),
       postCount: item.post_count ?? 0,
-    })).filter((item) => item.name);
+    })).filter((item) => item.name).map((item) => { rememberTagCategory('danbooru', item.name, item.category); return item; });
   },
   async addFavorite(postId, credentials) { await apiRequest(new URL(`/favorites.json?post_id=${postId}`, BASE_URL), { method: 'POST', credentials }); },
   async removeFavorite(postId, credentials) { await apiRequest(new URL(`/favorites/${postId}.json`, BASE_URL), { method: 'DELETE', credentials }); },

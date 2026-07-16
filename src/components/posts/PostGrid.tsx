@@ -1,5 +1,5 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, LoaderCircle, SearchX } from 'lucide-react';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { usePostStore } from '../../stores/post-store';
@@ -20,22 +20,35 @@ export function PostGrid() {
   const layout = useSettingsStore((state) => state.layout);
   const source = useSettingsStore((state) => state.activeSource);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridElement, setGridElement] = useState<HTMLDivElement | null>(null);
+  const [gridMetrics, setGridMetrics] = useState({ width: Math.max(window.innerWidth - 250, 320), top: 0 });
   const load = useCallback(() => void loadMore(), [loadMore]);
   const sentinel = useInfiniteScroll(load, hasMore && posts.length > 0 && !isLoading && !isLoadingMore);
   useEffect(() => { const resize = () => setViewportWidth(window.innerWidth); window.addEventListener('resize', resize); return () => window.removeEventListener('resize', resize); }, []);
+  useEffect(() => {
+    if (!gridElement) return;
+    const updateMetrics = () => {
+      const rect = gridElement.getBoundingClientRect();
+      const next = { width: rect.width, top: rect.top + window.scrollY };
+      setGridMetrics((current) => current.width === next.width && current.top === next.top ? current : next);
+    };
+    updateMetrics();
+    const observer = new ResizeObserver(updateMetrics);
+    observer.observe(gridElement);
+    return () => observer.disconnect();
+  }, [gridElement]);
   const responsiveColumns = layout === 'list' ? 1 : viewportWidth <= 720 ? 2 : viewportWidth <= 1000 ? Math.min(columns, 4) : columns;
   const masonry = layout === 'masonry';
   const rowCount = Math.ceil(posts.length / responsiveColumns);
-  const availableWidth = gridRef.current?.clientWidth ?? Math.max(viewportWidth - 250, 320);
-  const cardWidth = (availableWidth - (responsiveColumns - 1) * 9) / responsiveColumns;
+  const availableWidth = gridMetrics.width;
+  const cardWidth = (availableWidth - (responsiveColumns - 1) * 10) / responsiveColumns;
   const cardHeight = layout === 'list' ? 178 : cardWidth * 1.18;
   const virtualizer = useWindowVirtualizer({
     count: masonry ? posts.length : rowCount,
     lanes: masonry ? responsiveColumns : 1,
-    estimateSize: (index) => masonry ? cardWidth * Math.min(Math.max((posts[index]?.imageHeight || 1) / (posts[index]?.imageWidth || 1), .65), 1.8) + 9 : cardHeight + 9,
+    estimateSize: (index) => masonry ? cardWidth * Math.min(Math.max((posts[index]?.imageHeight || 1) / (posts[index]?.imageWidth || 1), .65), 1.8) + 10 : cardHeight + 10,
     overscan: 3,
-    scrollMargin: gridRef.current ? gridRef.current.getBoundingClientRect().top + window.scrollY : 0,
+    scrollMargin: gridMetrics.top,
   });
 
   if (isLoading) return <StatePanel icon={LoaderCircle} busy title={messages.states.loadingTitle} body={messages.states.loadingBody(source)} />;
@@ -44,11 +57,11 @@ export function PostGrid() {
 
   return (
     <>
-      <div ref={gridRef} className={`virtual-grid layout-${layout}`} style={{ height: `${virtualizer.getTotalSize()}px`, '--grid-columns': responsiveColumns } as React.CSSProperties}>
+      <div ref={setGridElement} className={`virtual-grid layout-${layout}`} style={{ height: `${virtualizer.getTotalSize()}px`, '--grid-columns': responsiveColumns } as React.CSSProperties}>
         {masonry ? virtualizer.getVirtualItems().map((item) => {
           const post = posts[item.index];
           const aspect = post.imageWidth && post.imageHeight ? post.imageWidth / post.imageHeight : 1 / 1.18;
-          return <div className="masonry-item" key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ left: `calc(${(item.lane ?? 0) * 100 / responsiveColumns}% + ${(item.lane ?? 0) * 4.5}px)`, width: `calc(${100 / responsiveColumns}% - ${9 * (responsiveColumns - 1) / responsiveColumns}px)`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`, '--media-aspect': aspect } as React.CSSProperties}><PostCard post={post} /></div>;
+          return <div className="masonry-item" key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ left: `calc(${(item.lane ?? 0) * 100 / responsiveColumns}% + ${(item.lane ?? 0) * 5}px)`, width: `calc(${100 / responsiveColumns}% - ${10 * (responsiveColumns - 1) / responsiveColumns}px)`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`, '--media-aspect': aspect } as React.CSSProperties}><PostCard post={post} /></div>;
         }) : virtualizer.getVirtualItems().map((row) => {
           const rowPosts = posts.slice(row.index * responsiveColumns, (row.index + 1) * responsiveColumns);
           return <div className="post-grid virtual-row" key={row.key} ref={virtualizer.measureElement} data-index={row.index} style={{ transform: `translateY(${row.start - virtualizer.options.scrollMargin}px)` }}>{rowPosts.map((post) => <PostCard key={`${post.source}:${post.id}`} post={post} />)}</div>;

@@ -12,11 +12,11 @@ const post = normalizePost({
 describe('tag copy formatting', () => {
   it('orders selected categories and preserves underscores', () => {
     expect(formatTagsForCopy(post, { categories: ['general', 'artist', 'character'], useUnderscores: true, escapeParentheses: false }))
-      .toBe('artist_name character_(series) blue_sky');
+      .toBe('artist_name, character_(series), blue_sky');
   });
 
   it('converts underscores and escapes prompt parentheses', () => {
     expect(formatTagsForCopy(post, { categories: ['character', 'copyright'], useUnderscores: false, escapeParentheses: true }))
-      .toBe('character \\(series\\) sample series');
+      .toBe('character \\(series\\), sample series');
   });
 });

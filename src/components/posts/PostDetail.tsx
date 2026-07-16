@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CircleOff, ExternalLink, Heart, Image, Minus, Plus, Send, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleOff, ExternalLink, Heart, Minus, Plus, Send, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { getBooruAdapter } from '../../services/booru-adapters';
 import { useFavoriteStore } from '../../stores/favorite-store';
@@ -12,6 +12,7 @@ import { DownloadMenu } from '../downloads/DownloadMenu';
 import { postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { postMessages } from '../../i18n/en-posts';
+import { usePostStore } from '../../stores/post-store';
 
 const categories: { key: TagCategory; label: string }[] = [
   { key: 'artist', label: postMessages.detail.categories.artist },
@@ -49,7 +50,6 @@ export function PostDetail() {
   const open = useUiStore((state) => state.detailOpen);
   const post = useUiStore((state) => state.currentPost);
   const close = useUiStore((state) => state.closeDetail);
-  const openViewer = useUiStore((state) => state.openViewer);
   const addTag = useFilterStore((state) => state.addTagFilter);
   const credential = useSettingsStore((state) => state.credentials[post?.source ?? state.activeSource]);
   const isLocal = useFavoriteStore((state) => post ? state.isLocal(post) : false);
@@ -58,6 +58,7 @@ export function PostDetail() {
   const isRemote = useFavoriteStore((state) => post ? state.isRemote(post) : false);
   const groups = useFavoriteStore((state) => state.groups);
   const toggleInGroup = useFavoriteStore((state) => state.toggleInGroup);
+  const enrichTags = usePostStore((state) => state.enrichTags);
   const [comments, setComments] = useState<CommentRecord[]>([]);
   const [relatedTags, setRelatedTags] = useState<RelatedTagRecord[]>([]);
   const [pools, setPools] = useState<PoolRecord[]>([]);
@@ -67,6 +68,10 @@ export function PostDetail() {
   const [busy, setBusy] = useState(false);
   const adapter = post ? getBooruAdapter(post.source) : null;
   const authenticated = Boolean(credential?.username && credential.apiKey);
+
+  useEffect(() => {
+    if (open && post) void enrichTags(post);
+  }, [enrichTags, open, post?.id, post?.source]);
 
   useEffect(() => {
     if (!open || !post || !adapter?.getComments) { setComments([]); return; }
@@ -102,10 +107,9 @@ export function PostDetail() {
           <div><span>{postMessages.detail.postRecord}</span><h2>#{post.id}</h2></div>
           <button className="icon-button" title={postMessages.detail.closeDetails} onClick={close}><X size={18} /></button>
         </div>
-         <button className="detail-image" onClick={() => openViewer(post)} title={postMessages.detail.openImageViewer}>
+         <div className="detail-image">
            <MediaPreview key={`${post.source}:${post.id}`} post={post} eager />
-             <span className="detail-open-label"><Image size={14} /> {postMessages.detail.openViewer}</span>
-         </button>
+         </div>
         <div className="detail-actions">
           <button className={isLocal ? 'is-active' : ''} onClick={() => void toggleLocal(post)}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
           <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !adapter?.addFavorite} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !adapter?.addFavorite ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>

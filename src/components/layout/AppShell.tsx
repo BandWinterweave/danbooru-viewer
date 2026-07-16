@@ -6,7 +6,6 @@ import { useUiStore } from '../../stores/ui-store';
 import { PostDetail } from '../posts/PostDetail';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { ImageViewer } from '../viewer/ImageViewer';
 import { downloadPosts } from '../../services/download-service';
 import { notify } from '../../services/notifications';
 import { shellMessages } from '../../i18n/en-shell';
@@ -51,7 +50,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <PostDetail />
-      <ImageViewer />
     </div>
   );
 }

@@ -6,8 +6,8 @@ import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { TagAutocompleteResult } from '../../types/api';
 import { shellMessages } from '../../i18n/en-shell';
-
-const suggestionCache = new Map<string, { expiresAt: number; items: TagAutocompleteResult[] }>();
+import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
+import { rememberTagMetadata } from '../../services/booru-adapters/tag-categories';
 
 export function SearchBar() {
   const searchText = useFilterStore((state) => state.searchText);
@@ -26,14 +26,19 @@ export function SearchBar() {
     if (lastTerm.length < 2) { setSuggestions([]); return; }
     let cancelled = false;
     const timeout = window.setTimeout(async () => {
+      const cached = await getCachedSuggestions(activeSource, lastTerm);
+      if (cancelled) return;
+      if (cached?.items.length) { setSuggestions(cached.items); setOpen(true); }
+      if (cached && !cached.stale) return;
       try {
-        const cacheKey = `${activeSource}:${lastTerm.toLowerCase()}`;
-        const cached = suggestionCache.get(cacheKey);
-        const result = cached && cached.expiresAt > Date.now() ? cached.items : await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
-        if (!cached || cached.expiresAt <= Date.now()) suggestionCache.set(cacheKey, { expiresAt: Date.now() + 300_000, items: result });
+        const result = await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await Promise.all([
+          cacheSuggestions(activeSource, lastTerm, result),
+          rememberTagMetadata(activeSource, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
+        ]);
         if (!cancelled) { setSuggestions(result); setOpen(true); }
       } catch {
-        if (!cancelled) setSuggestions([]);
+        if (!cancelled && !cached) setSuggestions([]);
       }
     }, 150);
     return () => { cancelled = true; window.clearTimeout(timeout); };
@@ -73,7 +78,7 @@ export function SearchBar() {
       {open && suggestions.length > 0 && (
         <div className="suggestions" role="listbox">
           {suggestions.map((suggestion) => (
-            <button type="button" role="option" data-category={suggestion.category === 1 ? 'artist' : suggestion.category === 3 ? 'copyright' : suggestion.category === 4 ? 'character' : suggestion.category === 5 ? 'meta' : 'general'} key={suggestion.name} onMouseDown={() => selectSuggestion(suggestion.name)}>
+            <button type="button" role="option" data-category={suggestion.category} key={suggestion.name} onMouseDown={() => selectSuggestion(suggestion.name)}>
               <span>{suggestion.name.replaceAll('_', ' ')}</span>
               <small>{suggestion.postCount.toLocaleString()}</small>
             </button>

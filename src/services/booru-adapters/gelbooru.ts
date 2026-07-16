@@ -1,8 +1,9 @@
 import type { BooruAdapter, Credentials, PaginatedResult, SearchQuery, TagAutocompleteResult } from '../../types/api';
-import type { BooruSource, Rating, UnifiedPost } from '../../types/post';
+import type { BooruSource, Rating, TagCategory, UnifiedPost } from '../../types/post';
 import { ApiRequestError, apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
 import { isOnOrAfter } from './date-filter';
+import { rememberTagCategory, tagCategoryFor, tagCategoryFromType } from './tag-categories';
 
 interface GelbooruRawPost {
   id: number | string;
@@ -18,6 +19,11 @@ interface GelbooruRawPost {
   height?: number | string;
   md5?: string;
   change?: number | string;
+  tag_string_general?: string;
+  tag_string_artist?: string;
+  tag_string_copyright?: string;
+  tag_string_character?: string;
+  tag_string_meta?: string;
 }
 
 const ratingMap: Record<string, Rating> = { general: 'g', safe: 's', sensitive: 's', questionable: 'q', explicit: 'e', g: 'g', s: 's', q: 'q', e: 'e' };
@@ -29,13 +35,30 @@ const absoluteUrl = (value: string | undefined, source: BooruSource) => {
   return url.toString();
 };
 
+function categorizedTags(raw: GelbooruRawPost, source: BooruSource) {
+  const groups: Array<[string | undefined, TagCategory]> = [
+    [raw.tag_string_artist, 'artist'],
+    [raw.tag_string_character, 'character'],
+    [raw.tag_string_copyright, 'copyright'],
+    [raw.tag_string_general, 'general'],
+    [raw.tag_string_meta, 'meta'],
+  ];
+  const fromGroups = groups.flatMap(([value, category]) => (value ?? '').split(/\s+/).filter(Boolean).map((name) => ({ name, category })));
+  if (fromGroups.length) {
+    const categorizedNames = new Set(fromGroups.map((tag) => tag.name));
+    const remaining = (raw.tags ?? '').split(/\s+/).filter((name) => name && !categorizedNames.has(name)).map((name) => ({ name, category: tagCategoryFor(source, name) }));
+    return [...fromGroups, ...remaining];
+  }
+  return (raw.tags ?? '').split(/\s+/).filter(Boolean).map((name) => ({ name, category: tagCategoryFor(source, name) }));
+}
+
 export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource): UnifiedPost {
   const tagString = raw.tags ?? '';
   const timestamp = Number(raw.change ?? 0);
   const date = timestamp ? new Date(timestamp * 1000).toISOString() : new Date(0).toISOString();
   return {
     id: Number(raw.id), source, rating: ratingMap[raw.rating ?? ''] ?? 's',
-    tags: tagString.split(/\s+/).filter(Boolean).map((name) => ({ name, category: 'general' })),
+    tags: categorizedTags(raw, source),
     tagString, score: Number(raw.score ?? 0), upScore: 0, downScore: 0, favCount: 0,
     uploader: raw.owner ?? 'unknown', sourceUrl: raw.source ?? '', imageWidth: Number(raw.width ?? 0),
     imageHeight: Number(raw.height ?? 0), fileSize: 0, fileExt: raw.file_url?.split('.').at(-1)?.split('?')[0] ?? '',
@@ -44,6 +67,35 @@ export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource)
     playbackUrl: ['mp4', 'webm'].includes(raw.file_url?.split('.').at(-1)?.split('?')[0].toLowerCase() ?? '') ? absoluteUrl(raw.file_url, source) : undefined,
     parentId: null, hasChildren: false, status: 'active', poolIds: [], tagStringGeneral: tagString, tagStringArtist: '', tagStringCopyright: '', tagStringCharacter: '', tagStringMeta: '',
   };
+}
+
+interface GelbooruTagItem { name?: string; value?: string; label?: string; count?: number | string; post_count?: number | string; type?: number | string; category?: number | string }
+
+export function normalizeGelbooruTagResponse(data: unknown): TagAutocompleteResult[] {
+  let items: GelbooruTagItem[] = [];
+  if (typeof data === 'string') {
+    const document = new DOMParser().parseFromString(data, 'application/xml');
+    items = Array.from(document.querySelectorAll('tag')).map((tag) => ({
+      name: tag.getAttribute('name') ?? '',
+      count: tag.getAttribute('count') ?? '0',
+      type: tag.getAttribute('type') ?? '0',
+    }));
+  } else if (Array.isArray(data)) {
+    items = data.map((item) => typeof item === 'string' ? { name: item } : item as GelbooruTagItem);
+  } else if (data && typeof data === 'object') {
+    const tags = (data as { tag?: GelbooruTagItem[] }).tag;
+    items = Array.isArray(tags) ? tags : [];
+  }
+  return items.map((item) => {
+    const name = item.name ?? item.value ?? item.label?.replace(/\s+\([\d,]+\)$/, '') ?? '';
+    const labelCount = item.label?.match(/\(([\d,]+)\)$/)?.[1]?.replaceAll(',', '');
+    return {
+      name,
+      label: item.label ?? name,
+      postCount: Number(item.post_count ?? item.count ?? labelCount ?? 0),
+      category: tagCategoryFromType(item.category ?? item.type),
+    };
+  }).filter((item) => item.name);
 }
 
 function withGelbooruAuth(url: URL, credentials?: Credentials) {
@@ -82,10 +134,16 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
     async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {
       if (query.trim().length < 2) return [];
       const url = new URL('/index.php', options.baseUrl);
-      url.searchParams.set('page', 'autocomplete2'); url.searchParams.set('type', 'tag_query'); url.searchParams.set('limit', '8'); url.searchParams.set('term', query.trim());
+      if (options.id === 'gelbooru') {
+        url.searchParams.set('page', 'autocomplete2'); url.searchParams.set('type', 'tag_query'); url.searchParams.set('term', query.trim());
+      } else {
+        url.searchParams.set('page', 'dapi'); url.searchParams.set('s', 'tag'); url.searchParams.set('q', 'index'); url.searchParams.set('json', '1'); url.searchParams.set('name_pattern', `${query.trim()}%`);
+      }
+      url.searchParams.set('limit', '8');
       withGelbooruAuth(url, credentials);
-      const items = await apiGet<Array<{ value?: string; label?: string; post_count?: number; category?: number }> | string[]>(url);
-      return items.map((item) => typeof item === 'string' ? { name: item, label: item, postCount: 0, category: 0 } : { name: item.value ?? item.label ?? '', label: item.label ?? item.value ?? '', postCount: Number(item.post_count ?? 0), category: Number(item.category ?? 0) || 0 }).filter((item) => item.name);
+      const items = normalizeGelbooruTagResponse(await apiGet<unknown>(url));
+      items.forEach((item) => rememberTagCategory(options.id, item.name, item.category));
+      return items;
     },
   };
   if (options.id === 'gelbooru') {

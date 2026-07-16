@@ -15,5 +15,5 @@ export function formatTagsForCopy(post: UnifiedPost, options: TagCopyOptions) {
       let value = options.useUnderscores ? tag.name : tag.name.replaceAll('_', ' ');
       if (options.escapeParentheses) value = value.replace(/[()]/g, (character) => `\\${character}`);
       return value;
-    })).join(' ');
+    })).join(', ');
 }

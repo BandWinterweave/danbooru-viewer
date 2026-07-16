@@ -1,4 +1,4 @@
-import { Check, CircleCheck, ClipboardCheck, Copy, Eye, FolderPlus, Heart, Minus, Plus } from 'lucide-react';
+import { Check, CircleCheck, ClipboardCheck, Copy, FolderPlus, Heart, Minus, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFilterStore } from '../../stores/filter-store';
@@ -21,7 +21,6 @@ function orderedTags(post: UnifiedPost) {
 
 export function PostCard({ post }: { post: UnifiedPost }) {
   const openDetail = useUiStore((state) => state.openDetail);
-  const openViewer = useUiStore((state) => state.openViewer);
   const addTag = useFilterStore((state) => state.addTagFilter);
   const isLocal = useFavoriteStore((state) => state.isLocal(post));
   const toggleLocal = useFavoriteStore((state) => state.toggleLocal);
@@ -29,6 +28,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const toggleInGroup = useFavoriteStore((state) => state.toggleInGroup);
   const selected = usePostStore((state) => state.selectedPostKeys.includes(`${post.source}:${post.id}`));
   const toggleSelected = usePostStore((state) => state.toggleSelected);
+  const enrichTags = usePostStore((state) => state.enrichTags);
   const layout = useSettingsStore((state) => state.layout);
   const copyTagCategories = useSettingsStore((state) => state.copyTagCategories);
   const copyTagsUseUnderscores = useSettingsStore((state) => state.copyTagsUseUnderscores);
@@ -57,7 +57,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     cursorPoint.current = { x: event.clientX, y: event.clientY };
     if (tooltipOpen) return;
     cancelDwell();
-    dwellTimer.current = window.setTimeout(() => { setPoint(cursorPoint.current); setTooltipOpen(true); }, 1000);
+    dwellTimer.current = window.setTimeout(() => { setPoint(cursorPoint.current); setTooltipOpen(true); void enrichTags(post); }, 700);
   };
   const copyTags = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -90,7 +90,6 @@ export function PostCard({ post }: { post: UnifiedPost }) {
         <span>{postMessages.card.score} {post.score}</span><span>{post.rating.toUpperCase()}</span><span>{post.fileSize ? `${(post.fileSize / 1024 / 1024).toFixed(1)} MB` : post.fileExt.toUpperCase()}</span><span>{post.imageWidth}×{post.imageHeight}</span>
         <div className="tooltip-actions">
           <div className="card-group-control"><button title={postMessages.card.addToFavoriteGroup} onClick={(event) => { event.stopPropagation(); setGroupMenuOpen((value) => !value); }}><FolderPlus size={14} /></button>{groupMenuOpen && <div className="card-group-menu" onClick={(event) => event.stopPropagation()}>{groups.length ? groups.map((group) => { const selected = group.postKeys.includes(`${post.source}:${post.id}`); return <button className={selected ? 'is-selected' : ''} key={group.id} onClick={() => { void toggleInGroup(group.id, post); setGroupMenuOpen(false); }}>{selected && <Check size={10} />}{group.name}</button>; }) : <span>{postMessages.card.noFavoriteGroups}</span>}</div>}</div>
-          <button title={postMessages.card.openImageViewer} onClick={(event) => { event.stopPropagation(); openViewer(post); }}><Eye size={14} /></button>
           <DownloadMenu post={post} compact />
           <button className={isLocal ? 'is-local' : ''} title={isLocal ? postMessages.card.removeFromLocalFavorites : postMessages.card.saveToLocalFavorites} onClick={favorite}><Heart size={14} fill={isLocal ? 'currentColor' : 'none'} /></button>
         </div>
@@ -105,7 +104,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
       {downloaded && <span className="downloaded-badge" title={postMessages.card.previouslyDownloaded}><CircleCheck size={12} /> {postMessages.card.downloaded}</span>}
       <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.slice(0, 8).map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) || postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{post.status ?? 'active'}</dd></div></dl></div>}
-      <button className={`rating-badge rating-badge--${post.rating}`} title={postMessages.card.openImageViewer} onClick={(event) => { event.stopPropagation(); openViewer(post); }}>{post.rating}</button>
+      <button className={`rating-badge rating-badge--${post.rating}`}>{post.rating}</button>
       {tooltip}
     </article>
   );
