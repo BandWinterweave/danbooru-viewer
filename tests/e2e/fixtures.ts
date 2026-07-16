@@ -47,6 +47,20 @@ export const test = base.extend<Fixtures>({
   mockedPage: async ({ page, apiRequests }, use) => {
     await page.addInitScript(() => {
       localStorage.clear();
+      const liveObjectUrls = new Set<string>();
+      const createObjectURL = URL.createObjectURL.bind(URL);
+      const revokeObjectURL = URL.revokeObjectURL.bind(URL);
+      URL.createObjectURL = (blob) => {
+        const url = createObjectURL(blob);
+        liveObjectUrls.add(url);
+        document.documentElement.dataset.liveObjectUrls = String(liveObjectUrls.size);
+        return url;
+      };
+      URL.revokeObjectURL = (url) => {
+        liveObjectUrls.delete(url);
+        document.documentElement.dataset.liveObjectUrls = String(liveObjectUrls.size);
+        revokeObjectURL(url);
+      };
       window.addEventListener('unhandledrejection', (event) => {
         document.documentElement.dataset.unhandledRejection = String(event.reason);
       });
@@ -57,12 +71,15 @@ export const test = base.extend<Fixtures>({
       apiRequests.push(url.toString());
       if (url.pathname.endsWith('/posts.json')) {
         const pageNumber = Number(url.searchParams.get('page') ?? '1');
+        const stress = url.searchParams.get('tags')?.includes('cache_stress');
         const items =
-          pageNumber === 1
-            ? Array.from({ length: 40 }, (_, index) => post(index + 1))
-            : pageNumber === 2
-              ? [post(41), post(42)]
-              : [];
+          stress && pageNumber <= 13
+            ? Array.from({ length: 40 }, (_, index) => post((pageNumber - 1) * 40 + index + 1_000))
+            : pageNumber === 1
+              ? Array.from({ length: 40 }, (_, index) => post(index + 1))
+              : pageNumber === 2
+                ? [post(41), post(42)]
+                : [];
         return route.fulfill({ json: items });
       }
       if (url.pathname.endsWith('/autocomplete.json')) {

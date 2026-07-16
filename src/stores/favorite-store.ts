@@ -3,7 +3,6 @@ import { get, setMany } from 'idb-keyval';
 import { getBooruAdapter } from '../services/booru-adapters';
 import type { Credentials } from '../types/api';
 import type { UnifiedPost } from '../types/post';
-import { useSettingsStore } from './settings-store';
 import { actionMessages } from '../i18n/en-actions';
 import { MAX_FAVORITE_IMPORT_BYTES, parseFavoriteImport } from '../services/favorite-import';
 
@@ -12,7 +11,7 @@ export const favoriteKey = (post: UnifiedPost) => `${post.source}:${post.id}`;
 interface FavoriteStore {
   favorites: UnifiedPost[]; groups: FavoriteGroup[]; hydrated: boolean; remoteOverrides: Record<string, boolean>;
   hydrate: () => Promise<void>; toggleLocal: (post: UnifiedPost) => Promise<void>; isLocal: (post: UnifiedPost) => boolean; isRemote: (post: UnifiedPost) => boolean;
-  toggleRemote: (post: UnifiedPost) => Promise<void>; createGroup: (name: string) => Promise<void>; deleteGroup: (id: string) => Promise<void>;
+  toggleRemote: (post: UnifiedPost, credentials?: Credentials) => Promise<void>; createGroup: (name: string) => Promise<void>; deleteGroup: (id: string) => Promise<void>;
   toggleInGroup: (groupId: string, post: UnifiedPost) => Promise<void>; exportJson: () => void; importJson: (file: File) => Promise<void>;
 }
 const FAVORITES_KEY = 'danbooru-viewer:favorites'; const GROUPS_KEY = 'danbooru-viewer:favorite-groups';
@@ -23,14 +22,13 @@ function enqueueFavoriteOperation(operation: () => Promise<void>) {
   return result;
 }
 async function persist(favorites: UnifiedPost[], groups: FavoriteGroup[]) { await setMany([[FAVORITES_KEY, favorites], [GROUPS_KEY, groups]]); }
-function credentialsFor(post: UnifiedPost): Credentials | undefined { return useSettingsStore.getState().credentials[post.source]; }
 export const useFavoriteStore = create<FavoriteStore>((setState, getState) => ({
   favorites: [], groups: [], hydrated: false, remoteOverrides: {},
   hydrate: () => enqueueFavoriteOperation(async () => setState({ favorites: await get<UnifiedPost[]>(FAVORITES_KEY) ?? [], groups: await get<FavoriteGroup[]>(GROUPS_KEY) ?? [], hydrated: true })),
   isLocal: (post) => getState().favorites.some((item) => favoriteKey(item) === favoriteKey(post)),
   isRemote: (post) => getState().remoteOverrides[favoriteKey(post)] ?? Boolean(post.isFavorited),
   toggleLocal: (post) => enqueueFavoriteOperation(async () => { const state = getState(); if (!state.hydrated) throw new Error(actionMessages.favorites.notReady); const key = favoriteKey(post); const removing = state.favorites.some((item) => favoriteKey(item) === key); const favorites = removing ? state.favorites.filter((item) => favoriteKey(item) !== key) : [post, ...state.favorites]; const groups = removing ? state.groups.map((group) => ({ ...group, postKeys: group.postKeys.filter((item) => item !== key) })) : state.groups; await persist(favorites, groups); setState({ favorites, groups }); }),
-  toggleRemote: async (post) => { const adapter = getBooruAdapter(post.source); const credentials = credentialsFor(post); if (!credentials?.username || !credentials.apiKey || !adapter.addFavorite) throw new Error(actionMessages.favorites.remoteUnavailable); const favorited = getState().isRemote(post); if (favorited) { if (!adapter.removeFavorite) throw new Error(actionMessages.favorites.remoteRemoveUnavailable); await adapter.removeFavorite(post.id, credentials); } else await adapter.addFavorite(post.id, credentials); setState((state) => ({ remoteOverrides: { ...state.remoteOverrides, [favoriteKey(post)]: !favorited } })); },
+  toggleRemote: async (post, credentials) => { const adapter = getBooruAdapter(post.source); if (!credentials?.username || !credentials.apiKey || !adapter.addFavorite) throw new Error(actionMessages.favorites.remoteUnavailable); const favorited = getState().isRemote(post); if (favorited) { if (!adapter.removeFavorite) throw new Error(actionMessages.favorites.remoteRemoveUnavailable); await adapter.removeFavorite(post.id, credentials); } else await adapter.addFavorite(post.id, credentials); setState((state) => ({ remoteOverrides: { ...state.remoteOverrides, [favoriteKey(post)]: !favorited } })); },
   createGroup: (name) => enqueueFavoriteOperation(async () => { const state = getState(); if (!state.hydrated) throw new Error(actionMessages.favorites.notReady); if (!name.trim()) return; const groups = [...state.groups, { id: crypto.randomUUID(), name: name.trim(), postKeys: [] }]; await persist(state.favorites, groups); setState({ groups }); }),
   deleteGroup: (id) => enqueueFavoriteOperation(async () => { const state = getState(); if (!state.hydrated) throw new Error(actionMessages.favorites.notReady); const groups = state.groups.filter((group) => group.id !== id); await persist(state.favorites, groups); setState({ groups }); }),
   toggleInGroup: (groupId, post) => enqueueFavoriteOperation(async () => { const state = getState(); if (!state.hydrated) throw new Error(actionMessages.favorites.notReady); const key = favoriteKey(post); const adding = !state.groups.find((group) => group.id === groupId)?.postKeys.includes(key); const favorites = adding && !state.favorites.some((item) => favoriteKey(item) === key) ? [post, ...state.favorites] : state.favorites; const groups = state.groups.map((group) => group.id !== groupId ? group : { ...group, postKeys: adding ? [...group.postKeys, key] : group.postKeys.filter((item) => item !== key) }); await persist(favorites, groups); setState({ favorites, groups }); }),

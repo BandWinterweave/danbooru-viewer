@@ -39,11 +39,17 @@ export interface Credentials {
 export interface ApiProxyRequest {
   type: 'API_REQUEST';
   payload: {
+    requestId?: string;
     url: string;
     method?: 'GET' | 'POST' | 'DELETE';
     headers?: Record<string, string>;
     body?: string;
   };
+}
+
+export interface ApiProxyCancelRequest {
+  type: 'API_CANCEL';
+  payload: { requestId: string };
 }
 
 export interface ApiProxyResponse<T = unknown> {
@@ -59,18 +65,18 @@ export interface BooruAdapter {
   readonly baseUrl: string;
   readonly supportsAuth: boolean;
   readonly supportsWrites: boolean;
-  searchPosts(query: SearchQuery, credentials?: Credentials): Promise<PaginatedResult<UnifiedPost>>;
-  getPost(id: number, credentials?: Credentials): Promise<UnifiedPost>;
+  searchPosts(query: SearchQuery, credentials?: Credentials, signal?: AbortSignal): Promise<PaginatedResult<UnifiedPost>>;
+  getPost(id: number, credentials?: Credentials, signal?: AbortSignal): Promise<UnifiedPost>;
   autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]>;
   addFavorite?(postId: number, credentials: Credentials): Promise<void>;
   removeFavorite?(postId: number, credentials: Credentials): Promise<void>;
   vote?(postId: number, score: 1 | -1, credentials: Credentials): Promise<void>;
   unvote?(postId: number, credentials: Credentials): Promise<void>;
-  getComments?(postId: number, credentials?: Credentials): Promise<CommentRecord[]>;
+  getComments?(postId: number, credentials?: Credentials, signal?: AbortSignal): Promise<CommentRecord[]>;
   createComment?(postId: number, body: string, credentials: Credentials): Promise<CommentRecord>;
-  getRelatedTags?(tag: string, credentials?: Credentials): Promise<RelatedTagRecord[]>;
-  getPools?(ids: number[], credentials?: Credentials): Promise<PoolRecord[]>;
-  getChildren?(postId: number, credentials?: Credentials): Promise<UnifiedPost[]>;
+  getRelatedTags?(tag: string, credentials?: Credentials, signal?: AbortSignal): Promise<RelatedTagRecord[]>;
+  getPools?(ids: number[], credentials?: Credentials, signal?: AbortSignal): Promise<PoolRecord[]>;
+  getChildren?(postId: number, credentials?: Credentials, signal?: AbortSignal): Promise<UnifiedPost[]>;
 }
 
 export interface CommentRecord {

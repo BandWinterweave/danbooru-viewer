@@ -40,3 +40,42 @@ test('details, local favorites, and download form a complete workflow', async ({
   expect((await download).suggestedFilename()).toBe('danbooru-1-sample_artist.png');
   await expect(page.getByText('Download started', { exact: true })).toBeVisible();
 });
+
+test('long scrolling keeps media disk and Blob URL usage bounded', async ({
+  mockedPage: page,
+  apiRequests,
+  browserName,
+}) => {
+  test.setTimeout(90_000);
+  test.skip(browserName !== 'chromium', 'Chromium runs the long-lived cache metric check.');
+  const search = page.getByPlaceholder('Search tags, artists, characters...');
+  await search.fill('cache_stress');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+
+  for (let requestedPage = 2; requestedPage <= 13; requestedPage += 1) {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect
+      .poll(() => apiRequests.some((url) => new URL(url).searchParams.get('page') === String(requestedPage)))
+      .toBe(true);
+  }
+  await expect
+    .poll(() => page.evaluate(() => Number(document.documentElement.dataset.liveObjectUrls ?? 0)))
+    .toBeLessThanOrEqual(60);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (
+          window as Window & { __danbooruImageCacheDiagnostics?: () => { entries: number; bytes: number } }
+        ).__danbooruImageCacheDiagnostics?.(),
+      ),
+    )
+    .toMatchObject({ entries: expect.any(Number), bytes: expect.any(Number) });
+  const diagnostics = await page.evaluate(() =>
+    (
+      window as Window & { __danbooruImageCacheDiagnostics?: () => { entries: number; bytes: number } }
+    ).__danbooruImageCacheDiagnostics!(),
+  );
+  expect(diagnostics.entries).toBeGreaterThan(0);
+  expect(diagnostics.entries).toBeLessThanOrEqual(500);
+  expect(diagnostics.bytes).toBeLessThanOrEqual(96 * 1024 * 1024);
+});

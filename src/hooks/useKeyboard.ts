@@ -35,7 +35,7 @@ export function useKeyboard() {
       if (key === 'd' && current && ui.detailOpen) { runAsync('download', downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule)); return; }
       if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen) {
         event.preventDefault();
-        if (!event.repeat) void postState.navigateDetail(key === 'arrowright' ? 1 : -1);
+        if (!event.repeat && current) void postState.navigateDetail(current, key === 'arrowright' ? 1 : -1).then((next) => { if (next) useUiStore.getState().setCurrentPost(next); });
         return;
       }
       if ((key === 'arrowup' || key === 'arrowdown') && current) {

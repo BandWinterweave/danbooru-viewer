@@ -112,7 +112,7 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
   const adapter: BooruAdapter = {
     id: options.id, name: options.name, baseUrl: options.baseUrl, supportsAuth: options.supportsAuth ?? false,
     supportsWrites: options.id === 'gelbooru',
-    async searchPosts(query: SearchQuery, credentials?: Credentials): Promise<PaginatedResult<UnifiedPost>> {
+    async searchPosts(query: SearchQuery, credentials?: Credentials, signal?: AbortSignal): Promise<PaginatedResult<UnifiedPost>> {
       if (options.requiresAuth && (!credentials?.username || !credentials.apiKey)) throw new Error(`${options.name} requires a user ID and API key for API access. Configure them in Settings.`);
       const limit = Math.min(Math.max(query.limit ?? 40, 1), 100);
       const page = Math.max(query.page ?? 1, 1);
@@ -123,14 +123,14 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       if (terms) url.searchParams.set('tags', terms);
       withGelbooruAuth(url, credentials);
       let response: GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string | null;
-      try { response = await apiGet<GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string>(url); }
+      try { response = await apiGet<GelbooruRawPost[] | { post?: GelbooruRawPost[] } | string>(url, undefined, signal); }
       catch (error) { if (error instanceof ApiRequestError && error.status === 401) throw new Error(`${options.name} rejected the credentials. Check the user ID and API key in Settings.`); throw error; }
       if (typeof response === 'string') throw new Error(response.includes('Missing authentication') ? `${options.name} requires a user ID and API key for API access. Configure them in Settings.` : `${options.name} returned an invalid API response.`);
       const posts = Array.isArray(response) ? response : response?.post ?? [];
       return { items: posts.map((post) => normalizeGelbooruPost(post, options.id)).filter((post) => isOnOrAfter(post.createdAt, query.dateAfter)), page, limit, hasMore: posts.length === limit };
     },
-    async getPost(id: number, credentials?: Credentials) {
-      const result = await adapter.searchPosts({ tags: `id:${id}`, limit: 1 }, credentials);
+    async getPost(id: number, credentials?: Credentials, signal?: AbortSignal) {
+      const result = await adapter.searchPosts({ tags: `id:${id}`, limit: 1 }, credentials, signal);
       if (!result.items[0]) throw new Error(`${options.name} post ${id} was not found`);
       return result.items[0];
     },

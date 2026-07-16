@@ -9,11 +9,59 @@ const ALLOWED_ORIGINS = new Set([
   'https://api.rule34.xxx',
 ]);
 const CACHE_TTL = 120_000;
+const CACHE_MAX_ENTRIES = 200;
+const CACHE_MAX_BYTES = 16 * 1024 * 1024;
 const REQUEST_TIMEOUT = 15_000;
 const MAX_BODY_LENGTH = 1_000_000;
 const ALLOWED_HEADERS = new Set(['accept', 'authorization', 'content-type']);
-const cache = new Map<string, { expiresAt: number; value: unknown }>();
+const cache = new Map<string, { expiresAt: number; value: unknown; bytes: number }>();
 const pending = new Map<string, Promise<ApiProxyResponse>>();
+const activeRequests = new Map<string, AbortController>();
+let cacheBytes = 0;
+let cacheOperations = 0;
+
+function maintainCache() {
+  cacheOperations += 1;
+  if (cacheOperations % 64 !== 0) return;
+  const now = Date.now();
+  for (const [key, value] of cache) {
+    if (value.expiresAt > now) continue;
+    cache.delete(key);
+    cacheBytes -= value.bytes;
+  }
+}
+
+function cacheGet(key: string) {
+  const cached = cache.get(key);
+  if (!cached) return undefined;
+  if (cached.expiresAt <= Date.now()) {
+    cache.delete(key);
+    cacheBytes -= cached.bytes;
+    return undefined;
+  }
+  cache.delete(key);
+  cache.set(key, cached);
+  return cached.value;
+}
+
+function cacheSet(key: string, value: unknown, bytes: number) {
+  const previous = cache.get(key);
+  if (previous) cacheBytes -= previous.bytes;
+  cache.delete(key);
+  cache.set(key, { expiresAt: Date.now() + CACHE_TTL, value, bytes });
+  cacheBytes += bytes;
+  while (cache.size > CACHE_MAX_ENTRIES || cacheBytes > CACHE_MAX_BYTES) {
+    const oldestKey = cache.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    const oldest = cache.get(oldestKey)!;
+    cache.delete(oldestKey);
+    cacheBytes -= oldest.bytes;
+  }
+}
+
+function clearCache() { cache.clear(); cacheBytes = 0; }
+
+export function apiCacheDiagnostics() { return { entries: cache.size, bytes: cacheBytes, maxEntries: CACHE_MAX_ENTRIES, maxBytes: CACHE_MAX_BYTES }; }
 
 function invalid(status: number, error: string): ApiProxyResponse { return { ok: false, status, error }; }
 
@@ -23,7 +71,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function validateMessage(message: unknown) {
   if (!isRecord(message) || message.type !== 'API_REQUEST' || !isRecord(message.payload)) return invalid(400, 'Invalid API request payload');
-  const { url: rawUrl, method: rawMethod = 'GET', headers: rawHeaders = {}, body } = message.payload;
+  const { requestId, url: rawUrl, method: rawMethod = 'GET', headers: rawHeaders = {}, body } = message.payload;
+  if (requestId !== undefined && (typeof requestId !== 'string' || requestId.length > 128)) return invalid(400, 'Invalid request ID');
   if (typeof rawUrl !== 'string' || rawUrl.length > 8192) return invalid(400, 'Invalid request URL');
   if (rawMethod !== 'GET' && rawMethod !== 'POST' && rawMethod !== 'DELETE') return invalid(405, 'Method is not allowed');
   if (!isRecord(rawHeaders)) return invalid(400, 'Invalid request headers');
@@ -45,13 +94,21 @@ function validateMessage(message: unknown) {
   if (headers.Authorization && (url.origin !== 'https://danbooru.donmai.us' || !/^Basic [A-Za-z0-9+/]+=*$/.test(headers.Authorization))) return invalid(400, 'Invalid authorization header');
   if (body !== undefined && (typeof body !== 'string' || body.length > MAX_BODY_LENGTH || rawMethod !== 'POST')) return invalid(400, 'Invalid request body');
   if (body && !['application/json', 'application/x-www-form-urlencoded'].some((type) => headers['Content-Type']?.toLowerCase().startsWith(type))) return invalid(400, 'Invalid request content type');
-  return { url, method: rawMethod, headers, body: body as string | undefined };
+  return { requestId: requestId as string | undefined, url, method: rawMethod, headers, body: body as string | undefined };
+}
+
+export function cancelProxyRequest(requestId: string) {
+  const controller = activeRequests.get(requestId);
+  if (!controller) return false;
+  controller.abort('cancelled');
+  return true;
 }
 
 export async function proxyRequest(message: unknown): Promise<ApiProxyResponse> {
+  maintainCache();
   const validated = validateMessage(message);
   if ('ok' in validated) return validated;
-  const { url, method, headers, body } = validated;
+  const { requestId, url, method, headers, body } = validated;
 
   const randomQuery = url.searchParams.get('tags')?.includes('order:random')
     || url.searchParams.get('tags')?.includes('sort:random')
@@ -59,15 +116,19 @@ export async function proxyRequest(message: unknown): Promise<ApiProxyResponse> 
   const sensitiveQuery = url.searchParams.has('api_key') || url.searchParams.has('user_id');
   const cacheable = method === 'GET' && !headers.Authorization && !sensitiveQuery && !randomQuery;
   const cacheKey = cacheable ? `${method}:${url.toString()}` : '';
-  const cached = cacheable ? cache.get(cacheKey) : undefined;
-  if (cached && cached.expiresAt > Date.now()) return { ok: true, status: 200, data: cached.value };
-  const pendingRequest = cacheable ? pending.get(cacheKey) : undefined;
+  const cached = cacheable ? cacheGet(cacheKey) : undefined;
+  if (cached !== undefined) return { ok: true, status: 200, data: cached };
+  const pendingRequest = cacheable && !requestId ? pending.get(cacheKey) : undefined;
   if (pendingRequest) return pendingRequest;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-  const request = performFetch(url, method, headers, body, cacheable, cacheKey, controller.signal).finally(() => clearTimeout(timeout));
-  if (cacheable) {
+  if (requestId) activeRequests.set(requestId, controller);
+  const timeout = setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT);
+  const request = performFetch(url, method, headers, body, cacheable, cacheKey, controller.signal).finally(() => {
+    clearTimeout(timeout);
+    if (requestId) activeRequests.delete(requestId);
+  });
+  if (cacheable && !requestId) {
     pending.set(cacheKey, request);
     void request.finally(() => pending.delete(cacheKey)).catch(() => undefined);
   }
@@ -96,7 +157,8 @@ async function performFetch(url: URL, method: string, headers: Record<string, st
     }
     return finalizeResponse(url, method, cacheable, cacheKey, response.status, response.statusText, contentType, responseText);
   } catch (error) {
-    return invalid(0, signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Request timed out' : 'Network request failed');
+    const aborted = signal.aborted || (error instanceof DOMException && error.name === 'AbortError');
+    return invalid(0, aborted ? signal.reason === 'cancelled' ? 'Request cancelled' : 'Request timed out' : 'Network request failed');
   }
 }
 
@@ -111,8 +173,8 @@ function finalizeResponse(url: URL, method: string, cacheable: boolean, cacheKey
   if (status < 200 || status >= 300) return { ok: false, status, error: actionMessages.network.requestFailed(status, statusText) };
   try {
     const data: unknown = status === 204 ? null : contentType.includes('json') ? (responseText.trim() ? JSON.parse(responseText) : []) : responseText;
-    if (cacheable) cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL, value: data });
-    if (method !== 'GET') cache.clear();
+    if (cacheable) cacheSet(cacheKey, data, new TextEncoder().encode(responseText).byteLength);
+    if (method !== 'GET') clearCache();
     return { ok: true, status, data };
   } catch {
     return { ok: false, status, error: actionMessages.network.unexpectedHtml(url.hostname) };

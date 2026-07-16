@@ -30,7 +30,7 @@ Danbooru Viewer provides one consistent interface for searching, inspecting, col
 - Configurable tag copy for prompt workflows
 - Original, sample, thumbnail, and playable-video downloads; batch selection and filename templates
 - Light, dark, and system themes
-- 24-hour IndexedDB media cache capped at 240 entries
+- 24-hour IndexedDB media cache bounded by a 96 MiB LRU budget
 
 ### Supported sources
 
@@ -138,7 +138,7 @@ Danbooru Viewer 是一款 Manifest V3 浏览器扩展，把新标签页变成统
 - 可配置的标签复制格式，适合提示词工作流
 - 原图、样图、缩略图和可播放视频下载，支持批量选择与文件名模板
 - 亮色、暗色和跟随系统主题
-- IndexedDB 媒体缓存，保留 24 小时且最多 240 条
+- IndexedDB 媒体缓存，保留 24 小时并限制在 96 MiB 的 LRU 预算内
 
 ### 图源与凭据
 

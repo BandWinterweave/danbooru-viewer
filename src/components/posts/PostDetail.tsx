@@ -1,20 +1,21 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, X } from 'lucide-react';
-import { FormEvent, useEffect, useRef, useState } from 'react';
-import { getBooruAdapter } from '../../services/booru-adapters';
+import { FormEvent, useEffect, useState } from 'react';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
-import { useSettingsStore, type DetailImageQuality } from '../../stores/settings-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { useUiStore } from '../../stores/ui-store';
-import type { CommentRecord, RelatedTagRecord } from '../../types/api';
+import type { CommentRecord } from '../../types/api';
 import { displayImageUrl } from '../../services/api/image-url';
-import type { PoolRecord, TagCategory, UnifiedPost } from '../../types/post';
+import type { TagCategory, UnifiedPost } from '../../types/post';
 import { DownloadMenu } from '../downloads/DownloadMenu';
-import { isVideoPost, postPageUrl } from '../../services/post-media';
-import { MediaPreview } from './MediaPreview';
+import { postPageUrl } from '../../services/post-media';
 import { postMessages } from '../../i18n/en-posts';
 import { usePostStore } from '../../stores/post-store';
 import { runAsync } from '../../services/notifications';
 import { safeHttpUrl } from '../../services/safe-url';
+import { usePostDetailResources, type DetailResource } from '../../hooks/usePostDetailResources';
+import { resolveSourceAccess } from '../../services/booru-adapters/source-access';
+import { PostDetailMedia } from './PostDetailMedia';
 
 const categories: { key: TagCategory; label: string }[] = [
   { key: 'artist', label: postMessages.detail.categories.artist },
@@ -49,57 +50,10 @@ function PostInformation({ post }: { post: UnifiedPost }) {
   </dl></section>;
 }
 
-function detailImageUrl(post: UnifiedPost, quality: DetailImageQuality) {
-  if (quality === 'preview') return post.previewUrl || post.sampleUrl || post.fileUrl;
-  if (quality === 'original') return post.fileUrl || post.sampleUrl || post.previewUrl;
-  return post.sampleUrl || post.fileUrl || post.previewUrl;
-}
-
-function ZoomableMedia({ post, quality }: { post: UnifiedPost; quality: DetailImageQuality }) {
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const dragging = useRef(false);
-  const lastPoint = useRef({ x: 0, y: 0 });
-  const source = detailImageUrl(post, quality);
-  const thumbnailSource = post.previewUrl || post.sampleUrl || post.fileUrl;
-
-  useEffect(() => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-    setFailed(false);
-    setLoaded(false);
-  }, [post.source, post.id, quality]);
-
-  if (isVideoPost(post) || !source || failed) return <MediaPreview key={`${post.source}:${post.id}`} post={post} eager />;
-
-  const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
-  const zoom = (event: React.WheelEvent) => {
-    setScale((current) => Math.min(20, Math.max(.1, current * Math.exp(-event.deltaY * .0015))));
-  };
-  const startDrag = (event: React.PointerEvent) => {
-    if (scale <= 1) return;
-    dragging.current = true;
-    lastPoint.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const drag = (event: React.PointerEvent) => {
-    if (!dragging.current) return;
-    const dx = event.clientX - lastPoint.current.x;
-    const dy = event.clientY - lastPoint.current.y;
-    lastPoint.current = { x: event.clientX, y: event.clientY };
-    setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
-  };
-  const endDrag = () => { dragging.current = false; };
-
-  return (
-    <div className="detail-media-zoom" onWheel={zoom} onDoubleClick={reset} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
-      {!loaded && <span className="detail-media-loading"><LoaderCircle className="spin" size={24} /></span>}
-      {thumbnailSource && <img className={`detail-media-thumb ${loaded ? 'is-replaced' : ''}`} src={displayImageUrl(thumbnailSource)} alt="" draggable={false} aria-hidden="true" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />}
-      <img className={`detail-media-full ${loaded ? 'is-loaded' : ''}`} src={displayImageUrl(source)} alt={postMessages.common.postAlt(post.source, post.id)} draggable={false} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
-    </div>
-  );
+function ResourceFeedback({ resource }: { resource: DetailResource<unknown[]> }) {
+  if (resource.status === 'loading') return <p className="detail-resource-state"><LoaderCircle className="spin" size={13} />{postMessages.detail.loadingResource}</p>;
+  if (resource.status === 'error') return <p className="detail-resource-state detail-resource-state--error"><span>{resource.error}</span><button onClick={resource.retry}>{postMessages.detail.retryResource}</button></p>;
+  return null;
 }
 
 export function PostDetail() {
@@ -120,15 +74,20 @@ export function PostDetail() {
   const hasMore = usePostStore((state) => state.hasMore);
   const isLoadingMore = usePostStore((state) => state.isLoadingMore);
   const navigateDetail = usePostStore((state) => state.navigateDetail);
-  const [comments, setComments] = useState<CommentRecord[]>([]);
-  const [relatedTags, setRelatedTags] = useState<RelatedTagRecord[]>([]);
-  const [pools, setPools] = useState<PoolRecord[]>([]);
-  const [relations, setRelations] = useState<UnifiedPost[]>([]);
+  const [submittedComments, setSubmittedComments] = useState<{ postKey: string; items: CommentRecord[] }>({ postKey: '', items: [] });
   const [commentBody, setCommentBody] = useState('');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
-  const adapter = post ? getBooruAdapter(post.source) : null;
-  const authenticated = Boolean(credential?.username && credential.apiKey);
+  const access = post ? resolveSourceAccess(post.source, credential) : null;
+  const adapter = access?.adapter ?? null;
+  const authenticated = access?.authenticated ?? false;
+  const resources = usePostDetailResources(open, post, adapter, credential);
+  const currentPostKey = post ? `${post.source}:${post.id}` : '';
+  const pendingComments = submittedComments.postKey === currentPostKey ? submittedComments.items : [];
+  const comments = [...resources.comments.data, ...pendingComments.filter((item) => !resources.comments.data.some((loaded) => loaded.id === item.id))];
+  const relatedTags = resources.relatedTags.data;
+  const pools = resources.pools.data;
+  const relations = resources.relations.data;
   const postIndex = post ? posts.findIndex((item) => item.source === post.source && item.id === post.id) : -1;
   const canPrevious = postIndex > 0;
   const canNext = postIndex >= 0 && (postIndex < posts.length - 1 || hasMore);
@@ -146,33 +105,15 @@ export function PostDetail() {
   }, [open]);
 
   useEffect(() => {
-    if (open && post) runAsync('api', enrichTags(post));
+    if (open && post) runAsync('api', enrichTags(post).then((enriched) => {
+      const current = useUiStore.getState().currentPost;
+      if (current?.source === enriched.source && current.id === enriched.id) useUiStore.getState().setCurrentPost(enriched);
+    }));
   }, [enrichTags, open, post?.id, post?.source]);
 
-  useEffect(() => {
-    if (!open || !post || !adapter?.getComments) { setComments([]); return; }
-    let cancelled = false;
-    adapter.getComments(post.id, credential).then((items) => { if (!cancelled) setComments(items); }).catch(() => { if (!cancelled) setComments([]); });
-    return () => { cancelled = true; };
-  }, [adapter, credential, open, post]);
-
-  useEffect(() => {
-    if (!open || !post || !adapter) { setRelatedTags([]); setPools([]); setRelations([]); return; }
-    let cancelled = false;
-    const leadTag = post.tags.find((tag) => tag.category === 'artist')?.name ?? post.tags.find((tag) => tag.category === 'general')?.name;
-    const requests: Promise<void>[] = [];
-    if (leadTag && adapter.getRelatedTags) requests.push(adapter.getRelatedTags(leadTag, credential).then((items) => { if (!cancelled) setRelatedTags(items); })); else setRelatedTags([]);
-    if (post.poolIds?.length && adapter.getPools) requests.push(adapter.getPools(post.poolIds, credential).then((items) => { if (!cancelled) setPools(items); })); else setPools([]);
-    const relationRequests: Promise<UnifiedPost | UnifiedPost[]>[] = [];
-    if (post.parentId) relationRequests.push(adapter.getPost(post.parentId, credential));
-    if (post.hasChildren && adapter.getChildren) relationRequests.push(adapter.getChildren(post.id, credential));
-    if (relationRequests.length) requests.push(Promise.all(relationRequests).then((items) => { if (!cancelled) setRelations(items.flat()); })); else setRelations([]);
-    Promise.all(requests).catch(() => { if (!cancelled) { setRelatedTags([]); setPools([]); setRelations([]); } });
-    return () => { cancelled = true; };
-  }, [adapter, credential, open, post]);
-
   const runAction = async (action: () => Promise<void>) => { setBusy(true); setActionError(''); try { await action(); } catch (error) { setActionError(error instanceof Error ? error.message : postMessages.detail.actionFailed); } finally { setBusy(false); } };
-  const submitComment = (event: FormEvent) => { event.preventDefault(); if (!post || !adapter?.createComment || !credential || !commentBody.trim()) return; void runAction(async () => { const comment = await adapter.createComment!(post.id, commentBody.trim(), credential); setComments((items) => [...items, comment]); setCommentBody(''); }); };
+  const navigate = async (direction: -1 | 1) => { if (!post) return; const next = await navigateDetail(post, direction); if (next) useUiStore.getState().setCurrentPost(next); };
+  const submitComment = (event: FormEvent) => { event.preventDefault(); if (!post || !adapter?.createComment || !credential || !commentBody.trim()) return; void runAction(async () => { const comment = await adapter.createComment!(post.id, commentBody.trim(), credential); setSubmittedComments((current) => ({ postKey: currentPostKey, items: current.postKey === currentPostKey ? [...current.items, comment] : [comment] })); setCommentBody(''); }); };
   if (!post) return null;
 
   return (
@@ -180,9 +121,9 @@ export function PostDetail() {
       <button className={`detail-scrim ${open ? 'is-open' : ''}`} aria-label={postMessages.detail.closeDetails} onClick={close} />
       <div className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open}>
         <section className="detail-media-stage" aria-label={postMessages.detail.postRecord}>
-          <ZoomableMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} />
-          <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title="Previous post" aria-label="Previous post" onClick={() => void navigateDetail(-1)}><ArrowLeft size={20} /></button>
-          <button className="detail-nav detail-nav--next" disabled={!canNext || isLoadingMore} title="Next post" aria-label="Next post" onClick={() => void navigateDetail(1)}><ArrowRight size={20} /></button>
+          <PostDetailMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} />
+          <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title="Previous post" aria-label="Previous post" onClick={() => void navigate(-1)}><ArrowLeft size={20} /></button>
+          <button className="detail-nav detail-nav--next" disabled={!canNext || isLoadingMore} title="Next post" aria-label="Next post" onClick={() => void navigate(1)}><ArrowRight size={20} /></button>
         </section>
       <aside className="detail-panel">
         <div className="detail-header">
@@ -191,7 +132,7 @@ export function PostDetail() {
         </div>
         <div className="detail-actions">
           <button className={isLocal ? 'is-active' : ''} onClick={() => void runAction(() => toggleLocal(post))}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
-          <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !adapter?.addFavorite} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !adapter?.addFavorite ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
+          <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite)} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite) ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post, access?.credentials))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
           <DownloadMenu post={post} />
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.upvote} onClick={() => void runAction(() => adapter!.vote!(post.id, 1, credential!))}><ArrowUp size={15} /></button>
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.downvote} onClick={() => void runAction(() => adapter!.vote!(post.id, -1, credential!))}><ArrowDown size={15} /></button>
@@ -227,12 +168,12 @@ export function PostDetail() {
             );
           })}
         </div>
-        {(relatedTags.length > 0 || pools.length > 0 || relations.length > 0) && <div className="related-content">
-          {relatedTags.length > 0 && <section><h3>{postMessages.detail.relatedTags}</h3><div className="related-tags">{relatedTags.map((tag) => <button data-category={tag.category === 1 ? 'artist' : tag.category === 3 ? 'copyright' : tag.category === 4 ? 'character' : tag.category === 5 ? 'meta' : 'general'} key={tag.name} onClick={() => addTag(tag.name, 'include')}>{tag.name.replaceAll('_', ' ')}</button>)}</div></section>}
-          {pools.length > 0 && <section><h3>{postMessages.detail.pools}</h3>{pools.map((pool) => <a key={pool.id} href={`https://danbooru.donmai.us/pools/${pool.id}`} target="_blank" rel="noreferrer">{pool.name.replaceAll('_', ' ')} <span>{pool.postCount}</span></a>)}</section>}
-          {relations.length > 0 && <section><h3>{postMessages.detail.parentAndChildren}</h3><div className="relation-posts">{relations.map((item) => <button key={item.id} title={postMessages.detail.openPost(item.id)} onClick={() => useUiStore.getState().openDetail(item)}><img src={displayImageUrl(item.previewUrl)} alt={postMessages.detail.relatedPostAlt(item.id)} /><span>#{item.id}</span></button>)}</div></section>}
+        {(resources.relatedTags.status !== 'unavailable' || resources.pools.status !== 'unavailable' || resources.relations.status !== 'unavailable') && <div className="related-content">
+          {resources.relatedTags.status !== 'unavailable' && <section><h3>{postMessages.detail.relatedTags}</h3><ResourceFeedback resource={resources.relatedTags} />{relatedTags.length > 0 && <div className="related-tags">{relatedTags.map((tag) => <button data-category={tag.category === 1 ? 'artist' : tag.category === 3 ? 'copyright' : tag.category === 4 ? 'character' : tag.category === 5 ? 'meta' : 'general'} key={tag.name} onClick={() => addTag(tag.name, 'include')}>{tag.name.replaceAll('_', ' ')}</button>)}</div>}</section>}
+          {resources.pools.status !== 'unavailable' && <section><h3>{postMessages.detail.pools}</h3><ResourceFeedback resource={resources.pools} />{pools.map((pool) => <a key={pool.id} href={`https://danbooru.donmai.us/pools/${pool.id}`} target="_blank" rel="noreferrer">{pool.name.replaceAll('_', ' ')} <span>{pool.postCount}</span></a>)}</section>}
+          {resources.relations.status !== 'unavailable' && <section><h3>{postMessages.detail.parentAndChildren}</h3><ResourceFeedback resource={resources.relations} />{relations.length > 0 && <div className="relation-posts">{relations.map((item) => <button key={`${item.source}:${item.id}`} title={postMessages.detail.openPost(item.id)} onClick={() => useUiStore.getState().openDetail(item)}><img src={displayImageUrl(item.previewUrl)} alt={postMessages.detail.relatedPostAlt(item.id)} /><span>#{item.id}</span></button>)}</div>}</section>}
         </div>}
-        {adapter?.getComments && <section className="comments-section"><h3>{postMessages.detail.comments} <span>{comments.length}</span></h3>{comments.length === 0 && <p>{postMessages.detail.noComments}</p>}{comments.map((comment) => <article key={comment.id}><header><strong>{comment.creator}</strong><time>{new Date(comment.createdAt).toLocaleDateString()}</time></header><p>{comment.body}</p></article>)}<form onSubmit={submitComment}><textarea value={commentBody} disabled={!authenticated} placeholder={authenticated ? postMessages.detail.writeComment : postMessages.detail.credentialsRequiredToComment} onChange={(event) => setCommentBody(event.target.value)} /><button title={postMessages.detail.postComment} disabled={!authenticated || !commentBody.trim() || busy}><Send size={15} /> {postMessages.detail.post}</button></form></section>}
+        {adapter?.getComments && <section className="comments-section"><h3>{postMessages.detail.comments} <span>{comments.length}</span></h3><ResourceFeedback resource={resources.comments} />{resources.comments.status === 'success' && comments.length === 0 && <p>{postMessages.detail.noComments}</p>}{comments.map((comment) => <article key={comment.id}><header><strong>{comment.creator}</strong><time>{new Date(comment.createdAt).toLocaleDateString()}</time></header><p>{comment.body}</p></article>)}<form onSubmit={submitComment}><textarea value={commentBody} disabled={!authenticated} placeholder={authenticated ? postMessages.detail.writeComment : postMessages.detail.credentialsRequiredToComment} onChange={(event) => setCommentBody(event.target.value)} /><button title={postMessages.detail.postComment} disabled={!authenticated || !commentBody.trim() || busy}><Send size={15} /> {postMessages.detail.post}</button></form></section>}
       </aside>
       </div>
     </>

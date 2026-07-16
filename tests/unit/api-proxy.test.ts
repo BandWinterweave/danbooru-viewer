@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { proxyRequest } from '../../src/background/api-proxy';
+import { apiCacheDiagnostics, cancelProxyRequest, proxyRequest } from '../../src/background/api-proxy';
 
 describe('background API proxy', () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -38,6 +38,18 @@ describe('background API proxy', () => {
     await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request timed out' });
   });
 
+  it('cancels an owned request by request ID', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    }));
+    const request = proxyRequest({ type: 'API_REQUEST', payload: { requestId: 'search-1', url: 'https://safebooru.org/index.php', method: 'GET' } });
+
+    expect(cancelProxyRequest('search-1')).toBe(true);
+    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request cancelled' });
+    expect(fetch.mock.calls[0]?.[1]?.signal).toMatchObject({ aborted: true });
+    expect(cancelProxyRequest('search-1')).toBe(false);
+  });
+
   it('applies the same timeout to the Danbooru tab fallback', async () => {
     vi.useFakeTimers();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('<!DOCTYPE html><title>Just a moment...</title>', { status: 403, headers: { 'Content-Type': 'text/html' } }));
@@ -57,7 +69,7 @@ describe('background API proxy', () => {
   });
 
   it('does not deduplicate credential-bearing query requests', async () => {
-    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const request = { type: 'API_REQUEST' as const, payload: { url: 'https://gelbooru.com/index.php?api_key=secret&user_id=7', method: 'GET' as const } };
     await Promise.all([proxyRequest(request), proxyRequest(request)]);
     expect(fetch).toHaveBeenCalledTimes(2);
@@ -81,6 +93,28 @@ describe('background API proxy', () => {
       expect.objectContaining({ ok: true, data: [] }),
       expect.objectContaining({ ok: true, data: [] }),
     ]);
+  });
+
+  it('bounds completed API responses with LRU eviction', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    for (let index = 0; index <= 200; index += 1) {
+      await proxyRequest({ type: 'API_REQUEST', payload: { url: `https://yande.re/post.json?tags=cache-${index}`, method: 'GET' } });
+    }
+    expect(fetch).toHaveBeenCalledTimes(201);
+    expect(apiCacheDiagnostics()).toMatchObject({ entries: 200, maxEntries: 200 });
+    expect(apiCacheDiagnostics().bytes).toBeLessThanOrEqual(apiCacheDiagnostics().maxBytes);
+  });
+
+  it('expires completed API responses after the TTL', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const request = { type: 'API_REQUEST' as const, payload: { url: 'https://yande.re/post.json?tags=ttl-test', method: 'GET' as const } };
+    await proxyRequest(request);
+    await proxyRequest(request);
+    vi.setSystemTime(Date.now() + 120_001);
+    await proxyRequest(request);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('uses Danbooru verification cookies and replaces Cloudflare HTML with guidance', async () => {

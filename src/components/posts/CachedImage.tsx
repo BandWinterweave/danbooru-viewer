@@ -1,13 +1,18 @@
 import { useEffect, useState, type ImgHTMLAttributes } from 'react';
-import { cachedImageUrl, cachedObjectUrl } from '../../services/image-cache';
+import { acquireCachedImage } from '../../services/image-cache';
 
 export function CachedImage({ src = '', ...props }: ImgHTMLAttributes<HTMLImageElement>) {
-  const [resolvedSrc, setResolvedSrc] = useState(() => cachedObjectUrl(src) ?? (typeof indexedDB === 'undefined' ? src : ''));
+  const [resolvedSrc, setResolvedSrc] = useState(() => typeof indexedDB === 'undefined' ? src : '');
   useEffect(() => {
     let current = true;
-    setResolvedSrc(cachedObjectUrl(src) ?? (typeof indexedDB === 'undefined' ? src : ''));
-    void cachedImageUrl(src).then((value) => { if (current) setResolvedSrc(value); });
-    return () => { current = false; };
+    let release: (() => void) | undefined;
+    setResolvedSrc(typeof indexedDB === 'undefined' ? src : '');
+    void acquireCachedImage(src).then((value) => {
+      release = value.release;
+      if (current) setResolvedSrc(value.src);
+      else release();
+    });
+    return () => { current = false; release?.(); };
   }, [src]);
   return resolvedSrc ? <img {...props} src={resolvedSrc} /> : <span className="image-cache-loading" aria-hidden="true" />;
 }

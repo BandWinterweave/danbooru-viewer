@@ -99,6 +99,8 @@ export const postMessages = {
     relatedPostAlt: (id: number) => `Related post ${id}`,
     comments: 'Comments',
     noComments: 'No comments yet.',
+    loadingResource: 'Loading...',
+    retryResource: 'Retry',
     writeComment: 'Write a comment',
     credentialsRequiredToComment: 'API credentials required to comment',
     postComment: 'Post comment',

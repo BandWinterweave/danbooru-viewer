@@ -42,12 +42,12 @@ describe('PostCard', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('uses a large thumbnail and exposes the canonical post link', () => {
+  it('uses the thumbnail and exposes the canonical post link', () => {
     const { container } = render(<PostCard post={post} />);
     const image = screen.getByRole('img');
     const link = image.closest('a');
 
-    expect(image).toHaveAttribute('src', displayImageUrl(post.sampleUrl));
+    expect(image).toHaveAttribute('src', displayImageUrl(post.previewUrl));
     expect(image).toHaveAttribute('data-original', post.fileUrl);
     expect(link).toHaveAttribute('href', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
     expect(container.querySelector('.post-card')).toHaveAttribute('data-post-url', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');

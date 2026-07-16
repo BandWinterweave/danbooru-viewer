@@ -73,7 +73,7 @@ export function PostGrid() {
       <div ref={sentinel} className="load-sentinel">
          {isLoadingMore && <><LoaderCircle className="spin" size={18} /> {messages.states.loadingMore}</>}
          {!hasMore && <span>{messages.states.end}</span>}
-         {error && posts.length > 0 && <><span className="inline-error">{error}</span><button className="inline-retry" onClick={() => void loadMore()}>{messages.actions.retry}</button></>}
+         {error && posts.length > 0 && <><span className="inline-error">{error}</span><button className="inline-retry" onClick={() => void retry()}>{messages.actions.retry}</button></>}
       </div>
     </>
   );

@@ -117,7 +117,7 @@ export const danbooruAdapter: BooruAdapter = {
   baseUrl: BASE_URL,
   supportsAuth: true,
   supportsWrites: true,
-  async searchPosts(query: SearchQuery, credentials?: Credentials): Promise<PaginatedResult<UnifiedPost>> {
+  async searchPosts(query: SearchQuery, credentials?: Credentials, signal?: AbortSignal): Promise<PaginatedResult<UnifiedPost>> {
     const limit = Math.min(Math.max(query.limit ?? 40, 1), 200);
     const page = Math.max(query.page ?? 1, 1);
     const url = new URL('/posts.json', BASE_URL);
@@ -126,13 +126,13 @@ export const danbooruAdapter: BooruAdapter = {
     const terms = buildSourceTags('danbooru', query);
     if (terms) url.searchParams.set('tags', terms);
 
-    const posts = await apiGet<DanbooruRawPost[]>(url, credentials);
+    const posts = await apiGet<DanbooruRawPost[]>(url, credentials, signal);
     return { items: posts.map(normalizePost), page, limit, hasMore: posts.length === limit };
   },
 
-  async getPost(id: number, credentials?: Credentials) {
+  async getPost(id: number, credentials?: Credentials, signal?: AbortSignal) {
     const url = new URL(`/posts/${id}.json`, BASE_URL);
-    return normalizePost(await apiGet<DanbooruRawPost>(url, credentials));
+    return normalizePost(await apiGet<DanbooruRawPost>(url, credentials, signal));
   },
 
   async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {
@@ -153,36 +153,36 @@ export const danbooruAdapter: BooruAdapter = {
   async removeFavorite(postId, credentials) { await apiRequest(new URL(`/favorites/${postId}.json`, BASE_URL), { method: 'DELETE', credentials }); },
   async vote(postId, score, credentials) { await apiRequest(new URL(`/posts/${postId}/votes.json`, BASE_URL), { method: 'POST', credentials, body: { score } }); },
   async unvote(postId, credentials) { await apiRequest(new URL(`/posts/${postId}/votes.json`, BASE_URL), { method: 'DELETE', credentials }); },
-  async getComments(postId, credentials) {
+  async getComments(postId, credentials, signal) {
     const url = new URL('/comments.json', BASE_URL); url.searchParams.set('search[post_id]', String(postId));
-    const comments = await apiGet<Array<{ id: number; post_id: number; creator_name?: string; body: string; score: number; created_at: string }>>(url, credentials);
+    const comments = await apiGet<Array<{ id: number; post_id: number; creator_name?: string; body: string; score: number; created_at: string }>>(url, credentials, signal);
     return comments.map((comment) => ({ id: comment.id, postId: comment.post_id, creator: comment.creator_name ?? 'unknown', body: comment.body, score: comment.score, createdAt: comment.created_at }));
   },
   async createComment(postId, body, credentials) {
     const comment = await apiRequest<{ id: number; post_id: number; creator_name?: string; body: string; score: number; created_at: string }>(new URL('/comments.json', BASE_URL), { method: 'POST', credentials, body: { comment: { post_id: postId, body } } });
     return { id: comment.id, postId: comment.post_id, creator: comment.creator_name ?? credentials.username, body: comment.body, score: comment.score, createdAt: comment.created_at };
   },
-  async getRelatedTags(tag, credentials) {
+  async getRelatedTags(tag, credentials, signal) {
     const url = new URL('/related_tag.json', BASE_URL);
     url.searchParams.set('query', tag);
     url.searchParams.set('category', 'all');
-    const data = await apiGet<{ related_tags?: Array<[string, number]> } | Array<[string, number]>>(url, credentials);
+    const data = await apiGet<{ related_tags?: Array<[string, number]> } | Array<[string, number]>>(url, credentials, signal);
     const items = Array.isArray(data) ? data : data.related_tags ?? [];
     return items.slice(0, 12).map(([name, category]) => ({ name, category }));
   },
-  async getPools(ids, credentials) {
+  async getPools(ids, credentials, signal) {
     if (!ids.length) return [];
     const url = new URL('/pools.json', BASE_URL);
     url.searchParams.set('search[id]', ids.join(','));
     url.searchParams.set('limit', String(ids.length));
-    const pools = await apiGet<Array<{ id: number; name: string; post_count: number }>>(url, credentials);
+    const pools = await apiGet<Array<{ id: number; name: string; post_count: number }>>(url, credentials, signal);
     return pools.map((pool) => ({ id: pool.id, name: pool.name, postCount: pool.post_count }));
   },
-  async getChildren(postId, credentials) {
+  async getChildren(postId, credentials, signal) {
     const url = new URL('/posts.json', BASE_URL);
     url.searchParams.set('tags', `parent:${postId}`);
     url.searchParams.set('limit', '12');
-    const posts = await apiGet<DanbooruRawPost[]>(url, credentials);
+    const posts = await apiGet<DanbooruRawPost[]>(url, credentials, signal);
     return posts.map(normalizePost);
   },
 };

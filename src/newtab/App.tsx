@@ -22,6 +22,7 @@ export default function App() {
 
   useEffect(() => {
     void usePostStore.getState().search(useFilterStore.getState().getSearchQuery());
+    return () => usePostStore.getState().cancelSearch();
   }, [activeSource, filters, ratings, meta]);
 
   return <><AppShell><PostGrid /></AppShell><ToastViewport /></>;
