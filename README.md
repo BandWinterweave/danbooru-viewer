@@ -2,182 +2,226 @@
 
 [English](#english) | [中文](#中文)
 
+A Manifest V3 browser extension that turns the new tab page into a fast, image-first Booru workspace.
+
+![](docs/screenshots/1.png)
+![](docs/screenshots/2.png)
+![Danbooru Viewer showing real Danbooru scenery posts with the General rating filter enabled](docs/screenshots/3.png)
+
+> Screenshot captured from the live Safebooru API with the `General` rating and `scenery` tag filters enabled.
+
 ---
 
 ## English
 
-A browser extension that turns your new tab into a focused workspace for browsing, filtering, saving, and downloading posts from Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34.
+Danbooru Viewer provides one consistent interface for searching, inspecting, collecting, and downloading posts from Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34.
 
-### Features
+### Highlights
 
-- Five Booru sources with a unified browsing experience
-- Tag search with autocomplete suggestions
-- Quick rating filters (Safe, Questionable, Explicit)
-- Advanced filters for score, date, resolution, and ordering
-- Grid, masonry, and list layouts with virtualized rendering
-- Full-screen image and video viewer with keyboard navigation
-- Post detail panel with tag categories, comments, notes, and related posts
-- Local favorites with custom groups
-- Formatted tag copy for AI prompt workflows
-- Single and batch downloads with configurable filenames
+- Five Booru sources behind a normalized browsing interface
+- Tag search with autocomplete, include/exclude chips, quick tags, and reusable filter presets
+- `General`, `Sensitive`, `Questionable`, and `Explicit` rating filters, translated to each source's rating vocabulary
+- Score, date, minimum resolution, and sort-order filters
+- Virtualized grid, masonry, and information-dense list layouts with 2-8 columns
+- Responsive two-column layout on compact screens
+- Post details with categorized tags, metadata, related tags, pools, parent/child posts, and comments when supported
+- Progressive large-image loading with preview, sample, or original quality; wheel zoom, drag-to-pan, and double-click reset
+- Local favorites, custom groups, and JSON import/export
+- Configurable tag copy for prompt workflows
+- Original, sample, thumbnail, and playable-video downloads; batch selection and filename templates
 - Light, dark, and system themes
-- Responsive layout for compact viewports
-- 24-hour thumbnail cache via IndexedDB
+- 24-hour IndexedDB media cache capped at 240 entries
+
+### Supported sources
+
+| Source | Public browsing | Credentials | Authenticated capabilities |
+|---|---:|---|---|
+| Danbooru | Yes | Username + API key, optional | Remote favorites, voting, and comments |
+| Gelbooru | No | User ID + API key | Post queries and adding remote favorites |
+| Safebooru | Yes | None | Read only |
+| Yande.re | Yes | Username + API key, optional | Authenticated read access |
+| Rule34 | No | User ID + API key | Post queries |
+
+Credentials are configured per source from the settings page.
+
+Yande.re exposes only `Safe`, `Questionable`, and `Explicit` ratings, so this extension maps both `General` and `Sensitive` to Yande.re's `Safe` filter.
 
 ### Install from source
 
-**Prerequisites:** [Node.js](https://nodejs.org/) 18+
+**Requirements:** [Node.js](https://nodejs.org/) 18 or newer and npm.
 
 ```bash
 npm install
-npm run build          # Chrome / Edge
-npm run build:firefox  # Firefox
+npm run build          # Chrome / Edge -> dist/
+npm run build:firefox  # Firefox -> dist-firefox/
 ```
 
-**Chrome / Edge:**
+**Chrome / Edge**
 
-1. Open `chrome://extensions/` (or `edge://extensions/`).
+1. Open `chrome://extensions/` or `edge://extensions/`.
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and select the `dist` folder.
-4. Press `Ctrl+T` to open a new tab.
+3. Select **Load unpacked** and choose the generated `dist` directory.
+4. Open a new tab.
 
-**Firefox:**
+**Firefox**
 
 1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on**.
-3. Select `dist-firefox/manifest.json`.
+2. Select **Load Temporary Add-on**.
+3. Choose `dist-firefox/manifest.json`.
 
-### Usage
+Firefox 109 or newer is required by the extension manifest.
 
-- Type tags in the search bar and press Enter.
-- Switch sources via the tabs in the header.
-- Click a post card to open the detail panel.
-- Hover a card for one second to inspect tags with `+`/`-` filter buttons.
-- Click the rating badge on a card to open the full-screen viewer.
+### Basic usage
+
+1. Select a source from the header.
+2. Enable a rating filter. Use `General` when you only want general-audience results.
+3. Enter one or more tags. Prefix a tag with `-` to exclude it.
+4. Open **Filters** for score, date, dimensions, and ordering.
+5. Select a card to inspect its media, metadata, and categorized tags.
+
+Hover over a card for about 700 ms to open the tag inspector. Its `+` and `-` controls add include or exclude filters without leaving the grid.
 
 ### Keyboard shortcuts
 
 | Key | Action |
-|-----|--------|
+|---|---|
 | `Ctrl+K` | Focus search |
 | `S` | Toggle sidebar |
-| `G` / `M` / `L` | Grid / Masonry / List |
-| `1`–`5` | Switch source |
-| `Escape` | Close viewer / detail / clear filters |
-| `F` | Toggle local favorite |
-| `D` | Download current post |
-| `ArrowLeft/Right` | Previous / next post |
-| `Ctrl+A` | Select all |
-| `Ctrl+D` | Download selected |
-| `Ctrl+Shift+S` | Toggle slideshow |
-| `Ctrl+Shift+C` | Clear all filters |
+| `G` / `M` / `L` | Grid / masonry / list layout |
+| `1`-`5` | Switch source |
+| `Escape` | Close details, or clear filters when details are closed |
+| `Left` / `Right` | Previous / next post in details |
+| `F` | Toggle local favorite for the current post |
+| `D` | Download the current post |
+| `Up` / `Down` | Vote on the current post when the source and credentials support it |
+| `Ctrl+A` | Select all loaded posts |
+| `Ctrl+D` | Download selected posts |
 
-### Settings
+Shortcuts can be disabled in settings.
 
-Click the gear icon to configure theme, columns, download filenames, slideshow interval, tag copy format, and API credentials.
+### Development
 
-### API credentials
+```bash
+npm run dev        # Vite development server
+npm run typecheck  # TypeScript project checks
+npm test           # Unit test suite
+npm run build      # Production Chromium build
+```
 
-| Feature | Requires |
-|---------|----------|
-| Danbooru, Safebooru, Yande.re browsing | None |
-| Gelbooru, Rule34 browsing | User ID + API key |
-| Remote favorites, votes, comments | Danbooru API key |
+The development server exposes local API and media proxies because the unpacked extension normally performs those requests through its Manifest V3 service worker.
 
 ### Privacy
 
-No analytics, no telemetry. All data stays on your device. Credentials and settings are stored in browser extension storage. Cached thumbnails and local favorites are stored in IndexedDB.
+Danbooru Viewer contains no analytics or telemetry. Preferences and source credentials are stored in browser extension storage. Favorites, download history, and cached media remain in IndexedDB on the local device. Network requests are made only to the selected Booru source and its media hosts.
 
 ### License
 
-MIT
+[MIT](LICENSE)
 
 ---
 
 ## 中文
 
-一个浏览器扩展，将新标签页变成浏览、搜索、收藏和下载 Danbooru、Gelbooru、Safebooru、Yande.re、Rule34 图片的工作台。
+Danbooru Viewer 是一款 Manifest V3 浏览器扩展，把新标签页变成统一的 Booru 图片工作台，可搜索、筛选、查看、收藏和下载 Danbooru、Gelbooru、Safebooru、Yande.re 与 Rule34 的帖子。
 
-### 功能
+### 主要功能
 
-- 五个 Booru 图源，统一浏览体验
-- 标签搜索，自动补全建议
-- 评级快速切换（Safe / Questionable / Explicit）
-- 高级筛选：评分、日期、分辨率、排序
-- 网格、瀑布流、列表三种布局，虚拟滚动
-- 全屏图片/视频查看器，键盘导航
-- 帖子详情面板：标签分类、评论、注释、关联帖子
-- 本地收藏和自定义分组
-- 格式化标签复制，适配 AI 绘图提示词
-- 单张和批量下载，文件名可自定义
-- 亮色、暗色、跟随系统三种主题
-- 窄屏自适应布局
-- IndexedDB 缩略图缓存（24 小时）
+- 统一接入五个 Booru 图源
+- 标签自动补全、包含/排除条件、快捷标签和可复用筛选预设
+- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级过滤，并自动转换为各图源的评级语法
+- 按评分、日期、最低分辨率和顺序进行高级筛选
+- 虚拟滚动的网格、瀑布流和信息列表布局，支持 2-8 列
+- 窄屏自动切换为双列布局
+- 帖子详情包含分类标签、元数据，以及图源支持时的关联标签、图集、父子帖子和评论
+- 大图渐进加载，可选择预览图、样图或原图；支持滚轮缩放、拖拽平移和双击复位
+- 本地收藏、自定义分组及 JSON 导入/导出
+- 可配置的标签复制格式，适合提示词工作流
+- 原图、样图、缩略图和可播放视频下载，支持批量选择与文件名模板
+- 亮色、暗色和跟随系统主题
+- IndexedDB 媒体缓存，保留 24 小时且最多 240 条
 
-### 本地安装
+### 图源与凭据
 
-**环境要求：** [Node.js](https://nodejs.org/) 18 及以上
+| 图源 | 可公开浏览 | 凭据 | 登录后能力 |
+|---|---:|---|---|
+| Danbooru | 是 | 用户名 + API Key，可选 | 远程收藏、投票和评论 |
+| Gelbooru | 否 | User ID + API Key | 查询帖子和添加远程收藏 |
+| Safebooru | 是 | 无需 | 只读 |
+| Yande.re | 是 | 用户名 + API Key，可选 | 认证只读访问 |
+| Rule34 | 否 | User ID + API Key | 查询帖子 |
+
+每个图源的凭据在设置页中独立保存。
+
+Yande.re 仅提供 `Safe`、`Questionable` 和 `Explicit` 评级，因此扩展会将 `General` 与 `Sensitive` 都映射到 Yande.re 的 `Safe` 过滤条件。
+
+### 从源码安装
+
+**环境要求：** [Node.js](https://nodejs.org/) 18 及以上版本，以及 npm。
 
 ```bash
 npm install
-npm run build          # Chrome / Edge
-npm run build:firefox  # Firefox
+npm run build          # Chrome / Edge -> dist/
+npm run build:firefox  # Firefox -> dist-firefox/
 ```
 
-**Chrome / Edge：**
+**Chrome / Edge**
 
-1. 打开 `chrome://extensions/`（或 `edge://extensions/`）
-2. 开启右上角**开发者模式**
-3. 点击**加载已解压的扩展程序**，选择 `dist` 文件夹
-4. 按 `Ctrl+T` 打开新标签页
+1. 打开 `chrome://extensions/` 或 `edge://extensions/`。
+2. 开启**开发者模式**。
+3. 点击**加载已解压的扩展程序**，选择生成的 `dist` 目录。
+4. 打开新标签页。
 
-**Firefox：**
+**Firefox**
 
-1. 打开 `about:debugging#/runtime/this-firefox`
-2. 点击**临时载入附加组件**
-3. 选择 `dist-firefox/manifest.json`
+1. 打开 `about:debugging#/runtime/this-firefox`。
+2. 点击**临时载入附加组件**。
+3. 选择 `dist-firefox/manifest.json`。
 
-### 使用方法
+扩展清单要求 Firefox 109 或更高版本。
 
-- 在搜索框输入标签，按回车搜索
-- 点击顶部标签切换数据源
-- 点击帖子卡片打开详情面板
-- 悬停卡片一秒弹出标签检查器，可快速添加/排除标签
-- 点击卡片左上角评级角标打开全屏查看器
+### 基本使用
+
+1. 在顶部选择图源。
+2. 启用评级过滤；只浏览适合一般受众的内容时选择 `General`。
+3. 输入一个或多个标签；在标签前加 `-` 可排除该标签。
+4. 打开 **Filters** 设置评分、日期、尺寸和排序。
+5. 选择图片卡片，查看媒体、元数据和分类标签。
+
+鼠标在卡片上停留约 700 毫秒会打开标签检查器，可使用 `+` 和 `-` 直接添加包含或排除条件。
 
 ### 键盘快捷键
 
 | 按键 | 功能 |
-|------|------|
+|---|---|
 | `Ctrl+K` | 聚焦搜索框 |
-| `S` | 切换侧栏 |
-| `G` / `M` / `L` | 切换网格 / 瀑布流 / 列表 |
-| `1`–`5` | 切换数据源 |
-| `Escape` | 关闭查看器 / 详情 / 清除筛选 |
-| `F` | 切换本地收藏 |
+| `S` | 显示或隐藏侧栏 |
+| `G` / `M` / `L` | 网格 / 瀑布流 / 列表布局 |
+| `1`-`5` | 切换图源 |
+| `Escape` | 关闭详情；详情关闭时清空筛选 |
+| `Left` / `Right` | 在详情中查看上一篇 / 下一篇 |
+| `F` | 收藏或取消收藏当前帖子 |
 | `D` | 下载当前帖子 |
-| `ArrowLeft/Right` | 上一张 / 下一张 |
-| `Ctrl+A` | 全选 |
-| `Ctrl+D` | 批量下载已选 |
-| `Ctrl+Shift+S` | 幻灯片播放 |
-| `Ctrl+Shift+C` | 清除所有筛选 |
+| `Up` / `Down` | 图源与凭据支持时为当前帖子投票 |
+| `Ctrl+A` | 选择全部已加载帖子 |
+| `Ctrl+D` | 下载已选帖子 |
 
-### 设置
+可在设置页关闭键盘快捷键。
 
-点击右上角齿轮图标，可配置主题、列数、下载文件名规则、幻灯片间隔、标签复制格式，以及各数据源的 API 凭据。
+### 开发与验证
 
-### API 凭据
+```bash
+npm run dev        # 启动 Vite 开发服务器
+npm run typecheck  # TypeScript 项目检查
+npm test           # 单元测试
+npm run build      # 生成 Chromium 正式构建
+```
 
-| 功能 | 需要 |
-|------|------|
-| 浏览 Danbooru、Safebooru、Yande.re | 无需 |
-| 浏览 Gelbooru、Rule34 | User ID + API Key |
-| 远程收藏、投票、评论 | Danbooru API Key |
+开发服务器提供本地 API 和媒体代理；安装为扩展后，请求由 Manifest V3 Service Worker 处理。
 
 ### 隐私
 
-无分析、无遥测。所有数据存储在本地设备。凭据和设置保存在浏览器扩展存储中。缩略图缓存和本地收藏保存在 IndexedDB 中。
+项目不包含分析或遥测。偏好设置和图源凭据保存在浏览器扩展存储中；收藏、下载历史和媒体缓存保存在本机 IndexedDB。网络请求仅发送到当前选择的 Booru 图源及其媒体域名。
 
 ### 许可证
 
-MIT
+[MIT](LICENSE)
