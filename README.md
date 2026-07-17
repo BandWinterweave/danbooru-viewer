@@ -4,11 +4,11 @@
 
 A Manifest V3 browser extension that turns the new tab page into a fast, image-first Booru workspace.
 
-> **Screenshot placeholder - Main workspace:** Light theme, General-only results, active tag filters, and the post detail drawer. Replace with `docs/screenshots/main-workspace.png`.
->
-> **Screenshot placeholder - Dark browsing view:** Dark theme masonry layout with the tag inspector and categorized tag actions visible. Replace with `docs/screenshots/dark-masonry.png`.
->
-> **Screenshot placeholder - Compact layout:** Mobile-width drawer, search and rating controls, and a two-column General-only grid. Replace with `docs/screenshots/compact-layout.png`.
+![Local Image](./docs/screenshots/1.png)
+![Local Image](./docs/screenshots/2.png)
+![Local Image](./docs/screenshots/3.png)
+![Local Image](./docs/screenshots/4.png)
+![Local Image](./docs/screenshots/5.png)
 
 ---
 
