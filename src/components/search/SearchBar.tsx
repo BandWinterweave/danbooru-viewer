@@ -8,6 +8,7 @@ import type { TagAutocompleteResult } from '../../types/api';
 import { useI18n } from '../../i18n/runtime';
 import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
 import { rememberTagMetadata } from '../../services/booru-adapters/tag-categories';
+import { applyKnownSuggestionCategories, ensureCanonicalTagMetadata } from '../../services/booru-adapters/tag-enrichment';
 
 export function SearchBar() {
   const { locale, messages: { shell: shellMessages } } = useI18n();
@@ -31,15 +32,20 @@ export function SearchBar() {
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions(activeSource, lastTerm);
       if (cancelled) return;
-       if (cached?.items.length) { setSuggestions(cached.items); setOpen(true); setActiveIndex(0); }
+       if (cached?.items.length) {
+         await ensureCanonicalTagMetadata(activeSource, cached.items.map((item) => item.name)).catch(() => undefined);
+         setSuggestions(applyKnownSuggestionCategories(activeSource, cached.items)); setOpen(true); setActiveIndex(0);
+       }
       if (cached && !cached.stale) return;
       try {
         const result = await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await ensureCanonicalTagMetadata(activeSource, result.map((item) => item.name)).catch(() => undefined);
+        const categorized = applyKnownSuggestionCategories(activeSource, result);
         await Promise.all([
-          cacheSuggestions(activeSource, lastTerm, result),
+          cacheSuggestions(activeSource, lastTerm, categorized),
           rememberTagMetadata(activeSource, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
-        if (!cancelled) { setSuggestions(result); setOpen(true); setActiveIndex(result.length ? 0 : -1); }
+        if (!cancelled) { setSuggestions(categorized); setOpen(true); setActiveIndex(categorized.length ? 0 : -1); }
       } catch {
         if (!cancelled && !cached) setSuggestions([]);
       }

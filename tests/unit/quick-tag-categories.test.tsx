@@ -7,8 +7,12 @@ import { useUiStore } from '../../src/stores/ui-store';
 const categoryState = vi.hoisted(() => ({ hydrated: false, hydrate: vi.fn() }));
 vi.mock('../../src/services/booru-adapters/tag-categories', () => ({
   hydrateTagMetadata: categoryState.hydrate,
+  hasCanonicalTagCategory: () => categoryState.hydrated,
+  hasTagCategory: () => categoryState.hydrated,
   rememberTagMetadata: vi.fn().mockResolvedValue(undefined),
+  tagCategoryFromType: () => 'general',
   tagCategoryFor: () => categoryState.hydrated ? 'character' : 'general',
+  tagMetadataNeedsRefresh: () => false,
 }));
 
 describe('Sidebar quick tag categories', () => {

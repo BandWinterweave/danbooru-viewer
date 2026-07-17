@@ -100,6 +100,43 @@ test('visible count and empty feedback follow preview filtering', async ({ mocke
   await expect(page.getByText('All matching previews are hidden')).toBeVisible();
 });
 
+test('reserved gutter absorbs every inline tag action without adding a wrapped row', async ({ mockedPage: page }) => {
+  await page.locator('.post-card').first().hover();
+  const tooltip = page.locator('.post-tooltip');
+  await expect(tooltip).toBeVisible();
+  await tooltip.evaluate((element) => {
+    element.style.width = '300px';
+  });
+
+  const tags = tooltip.locator('.tooltip-tag');
+  for (let index = 0; index < (await tags.count()); index += 1) {
+    await tooltip.locator('.post-tooltip-header').hover();
+    await page.waitForTimeout(350);
+    const before = await tags.evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      }),
+    );
+    const tag = tags.nth(index);
+    await tag.hover();
+    const actions = tag.locator('.tooltip-tag-actions');
+    await expect(actions).toBeVisible();
+    await page.waitForTimeout(150);
+    const actionBox = await actions.boundingBox();
+    const tagNameBox = await tag.locator('.tooltip-tag-name').boundingBox();
+    expect(actionBox).not.toBeNull();
+    expect(tagNameBox).not.toBeNull();
+    expect(actionBox!.x).toBeGreaterThanOrEqual(tagNameBox!.x + tagNameBox!.width - 1);
+    expect(actionBox!.y).toBeGreaterThanOrEqual(tagNameBox!.y - 2);
+    expect(actionBox!.y).toBeLessThan(tagNameBox!.y + tagNameBox!.height + 2);
+    const afterRows = await tags.evaluateAll((elements) =>
+      elements.map((element) => Math.round(element.getBoundingClientRect().y)),
+    );
+    expect(afterRows).toEqual(before.map((box) => Math.round(box.y)));
+  }
+});
+
 test('long scrolling keeps media disk and Blob URL usage bounded', async ({
   mockedPage: page,
   apiRequests,

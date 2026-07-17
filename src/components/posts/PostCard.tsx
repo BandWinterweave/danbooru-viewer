@@ -43,8 +43,10 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const [downloaded, setDownloaded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [point, setPoint] = useState({ x: 0, y: 0 });
+  const [activeTooltipTag, setActiveTooltipTag] = useState<{ tag: UnifiedPost['tags'][number]; index: number; rowEnd: number } | null>(null);
   const closeTimer = useRef<number>();
   const dwellTimer = useRef<number>();
+  const tagActionCloseTimer = useRef<number>();
   const cursorPoint = useRef({ x: 0, y: 0 });
   const groupMenuRef = useRef<HTMLDivElement>(null);
   const tags = orderedTags(post);
@@ -58,7 +60,15 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const favorite = (event: React.MouseEvent) => { event.stopPropagation(); runAsync('storage', toggleLocal(post)); };
   const cancelClose = () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); };
   const cancelDwell = () => { if (dwellTimer.current) window.clearTimeout(dwellTimer.current); };
-  const scheduleClose = () => { cancelDwell(); cancelClose(); if (tooltipOpen) closeTimer.current = window.setTimeout(() => { setTooltipOpen(false); setGroupMenuOpen(false); }, 140); };
+  const cancelTagActionClose = () => { if (tagActionCloseTimer.current) window.clearTimeout(tagActionCloseTimer.current); };
+  const scheduleTagActionClose = () => { cancelTagActionClose(); tagActionCloseTimer.current = window.setTimeout(() => setActiveTooltipTag(null), 320); };
+  const showTagActions = (element: HTMLElement, tag: UnifiedPost['tags'][number], index: number) => {
+    cancelTagActionClose();
+    const siblings = Array.from(element.parentElement?.children ?? []).filter((child): child is HTMLElement => child instanceof HTMLElement && child.classList.contains('tooltip-tag'));
+    const rowEnd = siblings.reduce((last, sibling, siblingIndex) => sibling.offsetTop === element.offsetTop ? siblingIndex : last, index);
+    setActiveTooltipTag({ tag, index, rowEnd });
+  };
+  const scheduleClose = () => { cancelDwell(); cancelClose(); if (tooltipOpen) closeTimer.current = window.setTimeout(() => { setTooltipOpen(false); setGroupMenuOpen(false); setActiveTooltipTag(null); }, 140); };
   const trackDwell = (event: React.MouseEvent) => {
     setHoveredPost(post);
     cancelClose();
@@ -91,7 +101,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     void hasDownloaded(post).then(setDownloaded, () => setDownloaded(false));
     const update = () => void hasDownloaded(post).then(setDownloaded, () => setDownloaded(false));
     window.addEventListener('danbooru-download-recorded', update);
-    return () => { cancelDwell(); cancelClose(); window.removeEventListener('danbooru-download-recorded', update); };
+    return () => { cancelDwell(); cancelClose(); cancelTagActionClose(); window.removeEventListener('danbooru-download-recorded', update); };
   }, [post]);
   useEffect(() => {
     if (layout === 'list') runAsync('api', enrichTags(post));
@@ -125,7 +135,13 @@ export function PostCard({ post }: { post: UnifiedPost }) {
           <button className={isLocal ? 'is-local' : ''} title={isLocal ? postMessages.card.removeFromLocalFavorites : postMessages.card.saveToLocalFavorites} onClick={favorite}><Heart size={14} fill={isLocal ? 'currentColor' : 'none'} /></button>
         </div>
       </div>
-      <div className="post-tooltip-tags" aria-label={postMessages.card.postTags}>{tags.map((tag) => <span className="tooltip-tag" data-category={tag.category} key={`${tag.category}:${tag.name}`}><button className="tooltip-tag-name" title={postMessages.detail.copyTag(tag.name)} onClick={() => void copySingleTag(tag)}>{tag.name.replaceAll('_', ' ')}</button><span className="tooltip-tag-actions"><button title={postMessages.common.includeTag(tag.name)} onClick={add(tag.name, 'include')}><Plus size={10} /></button><button title={postMessages.common.excludeTag(tag.name)} onClick={add(tag.name, 'exclude')}><Minus size={10} /></button></span></span>)}</div>
+      <div className="post-tooltip-tags" aria-label={postMessages.card.postTags} onScroll={() => setActiveTooltipTag(null)}>
+        {tags.map((tag, index) => {
+          const active = activeTooltipTag?.index === index;
+          const shifted = activeTooltipTag && index > activeTooltipTag.index && index <= activeTooltipTag.rowEnd;
+          return <span className={`tooltip-tag ${shifted ? 'tooltip-tag--shifted' : ''}`} data-category={tag.category} key={`${tag.category}:${tag.name}`} onMouseEnter={(event) => showTagActions(event.currentTarget, tag, index)} onMouseLeave={scheduleTagActionClose} onFocus={(event) => showTagActions(event.currentTarget, tag, index)} onBlur={scheduleTagActionClose}><button className="tooltip-tag-name" title={postMessages.detail.copyTag(tag.name)} onClick={() => void copySingleTag(tag)}>{tag.name.replaceAll('_', ' ')}</button>{active && <span className="tooltip-tag-actions" onMouseEnter={cancelTagActionClose} onMouseLeave={scheduleTagActionClose}><button title={postMessages.common.includeTag(tag.name)} onClick={add(tag.name, 'include')}><Plus size={10} /></button><button title={postMessages.common.excludeTag(tag.name)} onClick={add(tag.name, 'exclude')}><Minus size={10} /></button></span>}</span>;
+        })}
+      </div>
     </div>, document.body) : null;
 
   return (

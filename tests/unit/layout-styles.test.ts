@@ -25,6 +25,12 @@ describe('workspace layout styles', () => {
 
   it('marks hoverable tooltip tag names without restoring the image cache skeleton', () => {
     expect(styles).toMatch(/\.tooltip-tag-name:hover \{[^}]*text-decoration: underline;/);
+    expect(styles).toMatch(/\.post-tooltip-tags \{[^}]*padding: 7px 39px 9px 9px;/);
+    expect(styles).toMatch(/\.post-tooltip-tags \{[^}]*position: relative;/);
+    expect(styles).toMatch(/\.tooltip-tag--shifted \{[^}]*transform: translateX\(30px\);/);
+    expect(styles).toMatch(/\.tooltip-tag-actions \{[^}]*position: absolute;[^}]*left: 100%;[^}]*width: 30px;[^}]*animation: tooltip-tag-actions-in 120ms ease-out;/);
+    expect(styles).not.toContain('post-tooltip-tags--active');
+    expect(styles).not.toContain('tooltip-tag-actions--docked');
     expect(styles).not.toContain('.image-cache-loading');
   });
 });

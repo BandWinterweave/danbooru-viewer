@@ -179,8 +179,9 @@ export const usePostStore = create<PostStore>()(persist(
       else await runSearch(get().query, 'retry');
     },
     enrichTags: async (post) => {
-      const enriched = await enrichPostTags(post, credentials(post.source));
-      set((state) => ({ posts: state.posts.map((item) => item.source === enriched.source && item.id === enriched.id ? enriched : item) }));
+      const updatePost = (updated: UnifiedPost) => set((state) => ({ posts: state.posts.map((item) => item.source === updated.source && item.id === updated.id ? updated : item) }));
+      const enriched = await enrichPostTags(post, credentials(post.source), updatePost);
+      updatePost(enriched);
       return enriched;
     },
     loadMore: () => runLoadMore('append'),

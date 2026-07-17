@@ -2,7 +2,7 @@ import type { Credentials } from '../../types/api';
 import type { UnifiedPost } from '../../types/post';
 import { apiGet } from '../api/client';
 import { getBooruAdapter } from '.';
-import { hasTagCategory, hydrateTagMetadata, rememberTagMetadata, tagCategoryFor, tagCategoryFromType, tagMetadataNeedsRefresh } from './tag-categories';
+import { hasCanonicalTagCategory, hasTagCategory, hydrateTagMetadata, rememberTagMetadata, tagCategoryFor, tagCategoryFromType } from './tag-categories';
 
 interface DanbooruTagRecord {
   name: string;
@@ -17,30 +17,41 @@ function chunks<T>(items: T[], size: number) {
 }
 
 export function applyKnownTagCategories(post: UnifiedPost): UnifiedPost {
-  return { ...post, tags: post.tags.map((tag) => ({ ...tag, category: tagCategoryFor(post.source, tag.name) })) };
+  return { ...post, tags: post.tags.map((tag) => ({ ...tag, category: tagCategoryFor(post.source, tag.name, tag.category) })) };
 }
 
-async function fetchDanbooruMetadata(source: UnifiedPost['source'], names: string[]) {
+async function fetchDanbooruMetadata(names: string[]) {
   for (const batch of chunks(names, 40)) {
     const url = new URL('/tags.json', 'https://danbooru.donmai.us');
     url.searchParams.set('search[name_comma]', batch.join(','));
     url.searchParams.set('limit', String(batch.length));
     const records = await apiGet<DanbooruTagRecord[]>(url);
-    await rememberTagMetadata(source, records.map((record) => ({ name: record.name, category: tagCategoryFromType(record.category), postCount: record.post_count })));
+    await rememberTagMetadata('danbooru', records.map((record) => ({ name: record.name, category: tagCategoryFromType(record.category), postCount: record.post_count })));
   }
 }
 
-async function enrich(post: UnifiedPost, credentials?: Credentials) {
+export async function ensureCanonicalTagMetadata(source: UnifiedPost['source'], names: string[]) {
+  const uniqueNames = [...new Set(names)];
+  await hydrateTagMetadata(source, uniqueNames);
+  const missingCanonical = uniqueNames.filter((name) => !hasCanonicalTagCategory(name));
+  if (missingCanonical.length) await fetchDanbooruMetadata(missingCanonical);
+}
+
+export function applyKnownSuggestionCategories<T extends { name: string; category: UnifiedPost['tags'][number]['category'] }>(source: UnifiedPost['source'], items: T[]) {
+  return items.map((item) => ({ ...item, category: tagCategoryFor(source, item.name, item.category) }));
+}
+
+async function enrich(post: UnifiedPost, credentials?: Credentials, onCached?: (cached: UnifiedPost) => void) {
   if (post.source === 'danbooru') return post;
   const names = [...new Set(post.tags.map((tag) => tag.name))];
   await hydrateTagMetadata(post.source, names);
-  if (names.every((name) => hasTagCategory(post.source, name))) {
-    if (tagMetadataNeedsRefresh(post.source, names)) void fetchDanbooruMetadata(post.source, names).catch(() => undefined);
-    return applyKnownTagCategories(post);
-  }
-  const unresolved = names.filter((name) => !hasTagCategory(post.source, name));
+  const cached = applyKnownTagCategories(post);
+  onCached?.(cached);
 
-  try { await fetchDanbooruMetadata(post.source, unresolved); } catch { /* Fall through to the source API. */ }
+  const missingCanonical = names.filter((name) => !hasCanonicalTagCategory(name));
+  if (missingCanonical.length) {
+    try { await fetchDanbooruMetadata(missingCanonical); } catch { /* Fall through to the source API. */ }
+  }
 
   const sourceSpecific = names.filter((name) => !hasTagCategory(post.source, name)).slice(0, 24);
   if (sourceSpecific.length) {
@@ -56,14 +67,14 @@ async function enrich(post: UnifiedPost, credentials?: Credentials) {
       }));
     }
   }
-  return applyKnownTagCategories(post);
+  return applyKnownTagCategories(cached);
 }
 
-export function enrichPostTags(post: UnifiedPost, credentials?: Credentials) {
+export function enrichPostTags(post: UnifiedPost, credentials?: Credentials, onCached?: (cached: UnifiedPost) => void) {
   const key = `${post.source}:${post.id}`;
   const pending = pendingPosts.get(key);
   if (pending) return pending;
-  const request = enrich(post, credentials).finally(() => pendingPosts.delete(key));
+  const request = enrich(post, credentials, onCached).finally(() => pendingPosts.delete(key));
   pendingPosts.set(key, request);
   return request;
 }

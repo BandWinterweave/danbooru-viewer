@@ -70,6 +70,8 @@ describe('PostCard', () => {
     expect(screen.getByText('original')).toBeInTheDocument();
     expect(screen.getByText('highres')).toBeInTheDocument();
 
+    fireEvent.mouseEnter(screen.getByTitle('Copy original').closest('.tooltip-tag')!);
+    expect(screen.getByTitle('Exclude original').closest('.tooltip-tag')).not.toHaveClass('tooltip-tag--shifted');
     fireEvent.click(screen.getByTitle('Exclude original'));
     expect(useFilterStore.getState().activeFilters).toContainEqual(expect.objectContaining({ value: 'original', mode: 'exclude' }));
   });

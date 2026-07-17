@@ -9,7 +9,8 @@
     "host_permissions",
     "background",
     "action",
-    "chrome_url_overrides"
+    "chrome_url_overrides",
+    "content_security_policy"
   ],
   "properties": {
     "manifest_version": { "const": 3 },
@@ -60,7 +61,13 @@
     },
     "content_security_policy": {
       "type": "object",
-      "properties": { "extension_pages": { "type": "string", "pattern": "script-src 'self'" } }
+      "required": ["extension_pages"],
+      "properties": {
+        "extension_pages": {
+          "const": "script-src 'self'; object-src 'self'"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

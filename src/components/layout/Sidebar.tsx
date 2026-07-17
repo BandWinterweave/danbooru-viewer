@@ -13,6 +13,7 @@ import { getBooruAdapter } from '../../services/booru-adapters';
 import type { TagAutocompleteResult } from '../../types/api';
 import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
 import { hydrateTagMetadata, rememberTagMetadata, tagCategoryFor } from '../../services/booru-adapters/tag-categories';
+import { applyKnownSuggestionCategories, ensureCanonicalTagMetadata } from '../../services/booru-adapters/tag-enrichment';
 
 export function Sidebar() {
   const { locale, messages: { shell: shellMessages, domainActions: actionMessages } } = useI18n();
@@ -72,15 +73,20 @@ export function Sidebar() {
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions(source, term);
       if (cancelled) return;
-      if (cached?.items.length) { setQuickTagSuggestions(cached.items); setQuickTagDropdownOpen(true); setActiveSuggestion(0); }
+      if (cached?.items.length) {
+        await ensureCanonicalTagMetadata(source, cached.items.map((item) => item.name)).catch(() => undefined);
+        setQuickTagSuggestions(applyKnownSuggestionCategories(source, cached.items)); setQuickTagDropdownOpen(true); setActiveSuggestion(0);
+      }
       if (cached && !cached.stale) return;
       try {
         const result = await getBooruAdapter(source).autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await ensureCanonicalTagMetadata(source, result.map((item) => item.name)).catch(() => undefined);
+        const categorized = applyKnownSuggestionCategories(source, result);
         await Promise.all([
-          cacheSuggestions(source, term, result),
+          cacheSuggestions(source, term, categorized),
           rememberTagMetadata(source, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
-        if (!cancelled) { setQuickTagSuggestions(result); setQuickTagDropdownOpen(true); setActiveSuggestion(result.length ? 0 : -1); }
+        if (!cancelled) { setQuickTagSuggestions(categorized); setQuickTagDropdownOpen(true); setActiveSuggestion(categorized.length ? 0 : -1); }
       } catch {
         if (!cancelled && !cached) setQuickTagSuggestions([]);
       }
@@ -90,7 +96,7 @@ export function Sidebar() {
 
   useEffect(() => {
     let cancelled = false;
-    void hydrateTagMetadata(source, quickTags).then(() => {
+    void ensureCanonicalTagMetadata(source, quickTags).catch(() => hydrateTagMetadata(source, quickTags)).then(() => {
       if (!cancelled) setQuickTagCategoryRevision((revision) => revision + 1);
     });
     return () => { cancelled = true; };

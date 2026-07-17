@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { MetaFilter } from '../../types/filter';
 import { useFilterStore } from '../../stores/filter-store';
 import { useUiStore } from '../../stores/ui-store';
@@ -12,7 +12,7 @@ export function AdvancedFilter({ open }: { open: boolean }) {
   const close = useUiStore((state) => state.closeAdvancedFilters);
   const [draft, setDraft] = useState<MetaFilter>(meta);
   const ref = useRef<HTMLFormElement>(null);
-  useEffect(() => { if (open) setDraft(meta); }, [meta, open]);
+  useLayoutEffect(() => { if (open) setDraft(meta); }, [meta, open]);
   useDismissibleLayer(ref, open, close);
   if (!open) return null;
   const numberValue = (value: string) => value ? Number(value) : undefined;

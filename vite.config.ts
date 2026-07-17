@@ -122,6 +122,13 @@ export default defineConfig(({ mode }) => {
                   manifest_version: 3 as const,
                   permissions: manifest.permissions as chrome.runtime.ManifestPermissions[],
                   background: { ...manifest.background, type: 'module' as const },
+                  browser_specific_settings: {
+                    ...manifest.browser_specific_settings,
+                    gecko: {
+                      ...manifest.browser_specific_settings.gecko,
+                      data_collection_permissions: { required: ['none' as const] },
+                    },
+                  },
                 },
               }),
             ],

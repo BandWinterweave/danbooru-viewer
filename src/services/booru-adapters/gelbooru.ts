@@ -3,7 +3,7 @@ import type { BooruSource, Rating, TagCategory, UnifiedPost } from '../../types/
 import { ApiRequestError, apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
 import { isOnOrAfter } from './date-filter';
-import { rememberTagCategory, tagCategoryFor, tagCategoryFromType } from './tag-categories';
+import { rememberTagCategory, rememberTagMetadata, tagCategoryFor, tagCategoryFromType } from './tag-categories';
 import { safeHttpUrl } from '../safe-url';
 import { getMessages } from '../../i18n/runtime-core';
 
@@ -53,6 +53,17 @@ function categorizedTags(raw: GelbooruRawPost, source: BooruSource) {
     return [...fromGroups, ...remaining];
   }
   return (raw.tags ?? '').split(/\s+/).filter(Boolean).map((name) => ({ name, category: tagCategoryFor(source, name) }));
+}
+
+function explicitTagMetadata(posts: GelbooruRawPost[]) {
+  const groups: Array<[keyof GelbooruRawPost, TagCategory]> = [
+    ['tag_string_artist', 'artist'],
+    ['tag_string_character', 'character'],
+    ['tag_string_copyright', 'copyright'],
+    ['tag_string_general', 'general'],
+    ['tag_string_meta', 'meta'],
+  ];
+  return [...new Map(posts.flatMap((post) => groups.flatMap(([key, category]) => String(post[key] ?? '').split(/\s+/).filter(Boolean).map((name) => [name, category] as const))))];
 }
 
 export function normalizeGelbooruPost(raw: GelbooruRawPost, source: BooruSource): UnifiedPost {
@@ -128,7 +139,9 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       catch (error) { if (error instanceof ApiRequestError && error.status === 401) throw new Error(getMessages().domainActions.network.credentialsRejected(options.name)); throw error; }
       if (typeof response === 'string') throw new Error(response.includes('Missing authentication') ? getMessages().domainActions.network.credentialsRequired(options.name) : getMessages().domainActions.network.invalidResponse(options.name));
       const posts = Array.isArray(response) ? response : response?.post ?? [];
-      return { items: posts.map((post) => normalizeGelbooruPost(post, options.id)).filter((post) => isOnOrAfter(post.createdAt, query.dateAfter)), page, limit, hasMore: posts.length === limit };
+      const items = posts.map((post) => normalizeGelbooruPost(post, options.id)).filter((post) => isOnOrAfter(post.createdAt, query.dateAfter));
+      void rememberTagMetadata(options.id, explicitTagMetadata(posts).map(([name, category]) => ({ name, category }))).catch(() => undefined);
+      return { items, page, limit, hasMore: posts.length === limit };
     },
     async getPost(id: number, credentials?: Credentials, signal?: AbortSignal) {
       const result = await adapter.searchPosts({ tags: `id:${id}`, limit: 1 }, credentials, signal);

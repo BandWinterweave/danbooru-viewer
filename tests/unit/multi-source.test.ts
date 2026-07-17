@@ -72,6 +72,15 @@ describe('multi-source adapters', () => {
     expect(tagMetadataNeedsRefresh('rule34', ['category_without_count'])).toBe(true);
   });
 
+  it('uses Danbooru taxonomy across sources before source-specific fallbacks', () => {
+    rememberTagCategory('danbooru', 'cross_source_artist', 'artist');
+    rememberTagCategory('gelbooru', 'cross_source_artist', 'general');
+
+    expect(tagCategoryFor('danbooru', 'cross_source_artist')).toBe('artist');
+    expect(tagCategoryFor('gelbooru', 'cross_source_artist')).toBe('artist');
+    expect(tagCategoryFor('safebooru', 'cross_source_artist')).toBe('artist');
+  });
+
   it('returns cached search suggestions without another request', async () => {
     const items = [{ name: 'cached_artist', label: 'cached_artist', category: 'artist' as const, postCount: 18 }];
     await cacheSuggestions('gelbooru', 'cached', items);

@@ -3,6 +3,7 @@ name: Quality
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -18,6 +19,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run validate:version
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -53,7 +55,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build:all
+      - run: npm run verify:reproducible
       - run: npm run validate:artifacts
       - uses: actions/upload-artifact@v4
         with:
@@ -62,4 +64,5 @@ jobs:
             dist/
             dist-firefox/
             artifacts/build-manifest.json
-          retention-days: 14
+            artifacts/reproducibility.json
+          retention-days: 90

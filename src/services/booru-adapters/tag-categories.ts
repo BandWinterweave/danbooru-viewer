@@ -27,6 +27,10 @@ let initializePromise: Promise<void> | null = null;
 let writeQueue = Promise.resolve();
 const cacheKey = (source: BooruSource, name: string) => `${source}:${name}`;
 
+function metadataFor(source: BooruSource, name: string) {
+  return categoryCache.get('danbooru')?.get(name) ?? categoryCache.get(source)?.get(name);
+}
+
 async function ensureDiskIndex() {
   if (!initializePromise) initializePromise = (async () => {
     const stored = await idbEntries<string, unknown>(metadataStore);
@@ -70,30 +74,41 @@ export function rememberTagCategory(source: BooruSource, name: string, category:
   trimMemoryCache();
 }
 
-export function tagCategoryFor(source: BooruSource, name: string): TagCategory {
-  return categoryCache.get(source)?.get(name)?.category ?? 'general';
+export function tagCategoryFor(source: BooruSource, name: string, fallback: TagCategory = 'general'): TagCategory {
+  return metadataFor(source, name)?.category ?? fallback;
 }
 
 export function hasTagCategory(source: BooruSource, name: string) {
-  return categoryCache.get(source)?.has(name) ?? false;
+  return Boolean(metadataFor(source, name));
+}
+
+export function hasCanonicalTagCategory(name: string) {
+  return categoryCache.get('danbooru')?.has(name) ?? false;
 }
 
 export function tagMetadataNeedsRefresh(source: BooruSource, names: string[]) {
-  const sourceCache = categoryCache.get(source);
-  return names.some((name) => Date.now() - (sourceCache?.get(name)?.countUpdatedAt ?? 0) >= TAG_COUNT_TTL);
+  return names.some((name) => Date.now() - (metadataFor(source, name)?.countUpdatedAt ?? 0) >= TAG_COUNT_TTL);
 }
 
 export async function hydrateTagMetadata(source: BooruSource, names: string[]) {
-  const missing = [...new Set(names)].filter((name) => !hasTagCategory(source, name));
-  if (!missing.length || typeof indexedDB === 'undefined') return;
+  const uniqueNames = [...new Set(names)];
+  if (!uniqueNames.length || typeof indexedDB === 'undefined') return;
   try {
     await ensureDiskIndex();
-    const records = await getMany<CachedTagMetadata>(missing.map((name) => cacheKey(source, name)), metadataStore);
+    const lookups = uniqueNames.flatMap((name) => {
+      const records: Array<{ source: BooruSource; name: string }> = [];
+      if (!categoryCache.get('danbooru')?.has(name)) records.push({ source: 'danbooru', name });
+      if (source !== 'danbooru' && !categoryCache.get(source)?.has(name)) records.push({ source, name });
+      return records;
+    });
+    if (!lookups.length) return;
+    const records = await getMany<CachedTagMetadata>(lookups.map(({ source: recordSource, name }) => cacheKey(recordSource, name)), metadataStore);
     records.forEach((record, index) => {
       if (!record) return;
-      let sourceCache = categoryCache.get(source);
-      if (!sourceCache) { sourceCache = new Map(); categoryCache.set(source, sourceCache); }
-      sourceCache.set(missing[index], record);
+      const lookup = lookups[index];
+      let sourceCache = categoryCache.get(lookup.source);
+      if (!sourceCache) { sourceCache = new Map(); categoryCache.set(lookup.source, sourceCache); }
+      sourceCache.set(lookup.name, record);
     });
     trimMemoryCache();
   } catch {
@@ -138,4 +153,8 @@ export async function rememberTagMetadata(source: BooruSource, records: Array<{ 
 
 export function tagMetadataCacheDiagnostics() {
   return { memoryEntries: [...categoryCache.values()].reduce((total, cache) => total + cache.size, 0), maxEntries: MAX_TAG_METADATA };
+}
+
+export function resetTagMetadataMemoryForTests() {
+  categoryCache.clear();
 }

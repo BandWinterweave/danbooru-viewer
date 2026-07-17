@@ -8,7 +8,7 @@ import type {
 import type { Rating, TagCategory, UnifiedPost } from '../../types/post';
 import { apiGet, apiRequest } from '../api/client';
 import { buildSourceTags } from './query-tags';
-import { rememberTagCategory, tagCategoryFromType } from './tag-categories';
+import { rememberTagCategory, rememberTagMetadata, tagCategoryFromType } from './tag-categories';
 import { safeHttpUrl } from '../safe-url';
 
 const BASE_URL = 'https://danbooru.donmai.us';
@@ -111,6 +111,11 @@ export function normalizePost(raw: DanbooruRawPost): UnifiedPost {
   };
 }
 
+async function rememberPostTagCategories(posts: UnifiedPost[]) {
+  const categories = new Map(posts.flatMap((post) => post.tags).map((tag) => [tag.name, tag.category]));
+  await rememberTagMetadata('danbooru', [...categories].map(([name, category]) => ({ name, category })));
+}
+
 export const danbooruAdapter: BooruAdapter = {
   id: 'danbooru',
   name: 'Danbooru',
@@ -127,12 +132,16 @@ export const danbooruAdapter: BooruAdapter = {
     if (terms) url.searchParams.set('tags', terms);
 
     const posts = await apiGet<DanbooruRawPost[]>(url, credentials, signal);
-    return { items: posts.map(normalizePost), page, limit, hasMore: posts.length === limit };
+    const items = posts.map(normalizePost);
+    void rememberPostTagCategories(items).catch(() => undefined);
+    return { items, page, limit, hasMore: posts.length === limit };
   },
 
   async getPost(id: number, credentials?: Credentials, signal?: AbortSignal) {
     const url = new URL(`/posts/${id}.json`, BASE_URL);
-    return normalizePost(await apiGet<DanbooruRawPost>(url, credentials, signal));
+    const post = normalizePost(await apiGet<DanbooruRawPost>(url, credentials, signal));
+    void rememberPostTagCategories([post]).catch(() => undefined);
+    return post;
   },
 
   async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {

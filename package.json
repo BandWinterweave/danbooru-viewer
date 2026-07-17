@@ -14,15 +14,18 @@
     "build:all": "npm run build && npm run build:firefox",
     "assets": "node scripts/generate-icons.mjs",
     "lint": "eslint . --max-warnings 0",
-    "format": "prettier --write package.json vite.config.ts playwright.config.ts eslint.config.js scripts/firefox-manifest.mjs scripts/validate-artifacts.mjs scripts/manifest.schema.json tests/e2e .github",
-    "format:check": "prettier --check package.json vite.config.ts playwright.config.ts eslint.config.js scripts/firefox-manifest.mjs scripts/validate-artifacts.mjs scripts/manifest.schema.json tests/e2e .github",
+    "format": "prettier --write package.json vite.config.ts playwright.config.ts eslint.config.js scripts/firefox-manifest.mjs scripts/smoke-chromium-extension.mjs scripts/validate-artifacts.mjs scripts/validate-version.mjs scripts/verify-reproducible-build.mjs scripts/manifest.schema.json tests/e2e .github",
+    "format:check": "prettier --check package.json vite.config.ts playwright.config.ts eslint.config.js scripts/firefox-manifest.mjs scripts/smoke-chromium-extension.mjs scripts/validate-artifacts.mjs scripts/validate-version.mjs scripts/verify-reproducible-build.mjs scripts/manifest.schema.json tests/e2e .github",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:network": "playwright test tests/e2e/network.spec.ts --project=network-smoke",
+    "validate:version": "node scripts/validate-version.mjs",
     "validate:artifacts": "node scripts/validate-artifacts.mjs",
-    "quality": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:e2e && npm run build:all && npm run validate:artifacts"
+    "verify:reproducible": "node scripts/verify-reproducible-build.mjs",
+    "smoke:chromium-extension": "node scripts/smoke-chromium-extension.mjs",
+    "quality": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:e2e && npm run validate:version && npm run verify:reproducible && npm run validate:artifacts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.12",

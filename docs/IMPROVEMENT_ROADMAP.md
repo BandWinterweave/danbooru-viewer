@@ -328,15 +328,15 @@
 
 **任务：**
 
-- [ ] 自动同步或校验 `package.json` 与 Manifest 版本号。
-- [ ] 将安装文档改为使用 `npm ci`，保留开发场景说明。
-- [ ] 修正 README 中“网络请求仅访问当前图源”的不准确描述。
-- [ ] 更新隐私说明，明确凭据、跨图源标签 enrichment 和本地缓存行为。
-- [ ] 校验 Chromium 与 Firefox Manifest schema、权限和 CSP。
-- [ ] 在干净环境重复构建两次并比较文件清单与哈希。
-- [ ] 完成 Chrome、Edge 和 Firefox 真实加载冒烟测试。
-- [ ] 更新商店截图、能力列表、快捷键和已知限制。
-- [ ] 建立发布检查表、版本记录和回滚说明。
+- [x] 自动同步或校验 `package.json` 与 Manifest 版本号。
+- [x] 将安装文档改为使用 `npm ci`，保留开发场景说明。
+- [x] 修正 README 中“网络请求仅访问当前图源”的不准确描述。
+- [x] 更新隐私说明，明确凭据、跨图源标签 enrichment 和本地缓存行为。
+- [x] 校验 Chromium 与 Firefox Manifest schema、权限和 CSP。
+- [x] 在干净环境重复构建两次并比较文件清单与哈希。
+- [x] 完成 Chrome、Edge 和 Firefox 真实加载冒烟测试（本次结果见 `docs/PHASE6_BROWSER_SMOKE.md`；发布候选产物仍需按 `docs/RELEASING.md` 重复执行）。
+- [x] 更新商店截图、能力列表、快捷键和已知限制（截图使用内容占位，发布前由维护者补充实际图片）。
+- [x] 建立发布检查表、版本记录和回滚说明。
 
 **前置依赖：** 计划发布范围内的前序阶段已完成。
 

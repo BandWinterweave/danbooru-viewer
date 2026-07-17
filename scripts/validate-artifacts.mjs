@@ -16,6 +16,14 @@ const allowedPermissions = new Set([
   'scripting',
   'declarativeNetRequestWithHostAccess',
 ]);
+const requiredHostPermissions = new Set([
+  'https://*.donmai.us/*',
+  'https://gelbooru.com/*',
+  'https://*.gelbooru.com/*',
+  'https://*.safebooru.org/*',
+  'https://*.yande.re/*',
+  'https://*.rule34.xxx/*',
+]);
 
 async function filesIn(directory, prefix = '') {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -37,14 +45,18 @@ for (const build of builds) {
   }
   if (manifest.manifest_version !== 3) throw new Error(`${build}: manifest_version must be 3`);
   if (manifest.version !== packageJson.version) throw new Error(`${build}: version does not match package.json`);
-  if (
-    manifest.content_security_policy?.extension_pages &&
-    !manifest.content_security_policy.extension_pages.includes("script-src 'self'")
-  ) {
-    throw new Error(`${build}: unsafe extension page CSP`);
-  }
+  if (manifest.content_security_policy?.extension_pages !== "script-src 'self'; object-src 'self'")
+    throw new Error(`${build}: extension page CSP must allow only local scripts and objects`);
   const unexpected = (manifest.permissions ?? []).filter((permission) => !allowedPermissions.has(permission));
   if (unexpected.length) throw new Error(`${build}: unexpected permissions: ${unexpected.join(', ')}`);
+  const missingHosts = [...requiredHostPermissions].filter(
+    (permission) => !manifest.host_permissions?.includes(permission),
+  );
+  const unexpectedHosts = (manifest.host_permissions ?? []).filter(
+    (permission) => !requiredHostPermissions.has(permission),
+  );
+  if (missingHosts.length || unexpectedHosts.length)
+    throw new Error(`${build}: host permissions differ from the reviewed allowlist`);
   if (build === 'dist-firefox' && !Array.isArray(manifest.background?.scripts))
     throw new Error('Firefox build must use background.scripts');
   if (build === 'dist' && !manifest.background?.service_worker)
@@ -59,6 +71,26 @@ for (const build of builds) {
   }
 
   const files = await filesIn(directory);
+  const referencedFiles = [
+    manifest.action?.default_popup,
+    ...Object.values(manifest.icons ?? {}),
+    ...Object.values(manifest.action?.default_icon ?? {}),
+    ...Object.values(manifest.chrome_url_overrides ?? {}),
+    manifest.options_ui?.page,
+    ...(manifest.background?.scripts ?? []),
+    manifest.background?.service_worker,
+    ...(manifest.content_scripts ?? []).flatMap((script) => [...(script.js ?? []), ...(script.css ?? [])]),
+    ...(manifest.declarative_net_request?.rule_resources ?? []).map((rule) => rule.path),
+  ].filter(Boolean);
+  const missingFiles = referencedFiles.filter((file) => !files.includes(file.replace(/^\.\//, '')));
+  if (missingFiles.length) throw new Error(`${build}: manifest references missing files: ${missingFiles.join(', ')}`);
+  if (build === 'dist-firefox' && manifest.browser_specific_settings?.gecko?.strict_min_version !== '140.0')
+    throw new Error('Firefox build must retain the reviewed minimum version');
+  if (
+    build === 'dist-firefox' &&
+    !manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required?.includes('none')
+  )
+    throw new Error('Firefox build must declare that it requires no data collection');
   report.builds[build] = await Promise.all(
     files.map(async (file) => {
       const absolute = path.join(directory, file);

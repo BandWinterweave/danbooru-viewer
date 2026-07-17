@@ -32,4 +32,15 @@ describe('bounded tag disk caches', () => {
     const store = [...databases.values()][0];
     expect([...store.keys()].filter((key) => key !== '__metadata_index__')).toHaveLength(10_000);
   });
+
+  it('hydrates the canonical record even when a source-specific fallback is already in memory', async () => {
+    const cache = await import('../../src/services/booru-adapters/tag-categories');
+    await cache.rememberTagMetadata('danbooru', [{ name: 'fkey', category: 'artist', postCount: 100 }]);
+    cache.resetTagMetadataMemoryForTests();
+    cache.rememberTagCategory('gelbooru', 'fkey', 'general');
+
+    await cache.hydrateTagMetadata('gelbooru', ['fkey']);
+
+    expect(cache.tagCategoryFor('gelbooru', 'fkey')).toBe('artist');
+  });
 });
