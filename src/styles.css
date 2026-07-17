@@ -547,9 +547,14 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .comfy-empty { min-height: 110px; margin: 0; display: grid; place-items: center; color: var(--muted); }
 .comfy-loading-state { margin: 10px 0 0; color: var(--muted); font: 10px "Cascadia Mono", Consolas, monospace; }
 .comfy-output-scrim { position: fixed; z-index: 100; inset: 0; padding: 20px; background: rgb(10 15 13 / 72%); display: grid; place-items: center; }
-.comfy-output-viewer { position: relative; width: calc(100vw - 40px); height: calc(100dvh - 40px); padding: 42px 12px 12px; border: 1px solid var(--line); background: var(--surface); overflow: auto; }
+.comfy-output-viewer { position: relative; width: calc(100vw - 40px); height: calc(100dvh - 40px); border: 1px solid var(--line); background: var(--surface); overflow: hidden; cursor: grab; touch-action: none; }
+.comfy-output-viewer.is-dragging { cursor: grabbing; }
 .comfy-output-viewer > button { position: absolute; top: 7px; right: 7px; }
-.comfy-output-viewer img { max-width: 100%; max-height: calc(100dvh - 80px); margin: auto; display: block; object-fit: contain; }
+.comfy-output-viewer img { position: absolute; inset: 0; width: auto; height: auto; max-width: calc(100% - 48px); max-height: calc(100% - 48px); margin: auto; display: block; object-fit: contain; user-select: none; transform-origin: center; transition: transform 80ms linear, opacity 140ms ease; }
+.comfy-viewer-preview { opacity: 1; }
+.comfy-viewer-preview.is-replaced, .comfy-viewer-full { opacity: 0; }
+.comfy-viewer-full.is-loaded { opacity: 1; }
+.comfy-viewer-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
 .comfy-output-viewer pre { margin: 0; padding: 14px; background: var(--canvas); white-space: pre-wrap; overflow-wrap: anywhere; }
 .popup-shell { width: 290px; padding: 18px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; background: var(--surface); }
 .popup-shell strong { font-size: 13px; }

@@ -1,174 +1,90 @@
-# Danbooru Viewer / Danbooru 图片浏览器
+# Danbooru Viewer
 
-[English](#english) | [中文](#中文)
+**把散落在多个 Booru 图源里的灵感，直接送进本机 ComfyUI。**
 
-A Manifest V3 browser extension that turns the new tab page into a fast, image-first Booru workspace.
+[中文](#中文) | [English](#english)
 
-![Danbooru Viewer screenshot 1](./docs/screenshots-20260717/1.png)
-![Danbooru Viewer screenshot 2](./docs/screenshots-20260717/2.png)
-![Danbooru Viewer screenshot 3](./docs/screenshots-20260717/3.png)
-![Danbooru Viewer screenshot 4](./docs/screenshots-20260717/4.png)
-![Danbooru Viewer screenshot 5](./docs/screenshots-20260717/5.png)
+> **截图占位：主界面全景**  
+> 建议内容：发现页瀑布流、标签搜索和右上角 ComfyUI 入口同屏。
 
----
-
-## English
-
-Danbooru Viewer provides one consistent interface for searching, inspecting, collecting, and downloading posts from Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34.
-
-### Highlights
-
-- Five Booru sources behind a normalized browsing interface
-- Tag search with autocomplete, include/exclude chips, quick tags, and filter presets that can be renamed, updated, and reordered
-- `General`, `Sensitive`, `Questionable`, and `Explicit` rating filters, translated to each source's rating vocabulary; first installations default to `General` only
-- Score, date, minimum resolution, and sort-order filters
-- Virtualized grid, masonry, and information-dense list layouts with 2-8 columns
-- Responsive two-column layout on compact screens
-- Post details with categorized tags, metadata, related tags, pools, parent/child posts, and comments when supported; select a categorized tag name to copy its canonical underscore form
-- Progressive large-image loading with preview, sample, or original quality; wheel zoom, drag-to-pan, and double-click reset
-- A dedicated local favorites library with cross-group search, sorting, filtering, batch organization, custom groups, and previewed merge/replace JSON import
-- Configurable tag copy for prompt workflows
-- Original, sample, thumbnail, and playable-video downloads; batch selection and filename templates
-- Light, dark, and system themes
-- Runtime English and Simplified Chinese UI with browser-language following or a manual language setting
-- Configurable preview/sample thumbnail quality for the main grid and favorites library
-- 24-hour IndexedDB media cache bounded by a 96 MiB LRU budget
-
-### Supported sources
-
-| Source | Public browsing | Credentials | Authenticated capabilities |
-|---|---:|---|---|
-| Danbooru | Yes | Username + API key, optional | Remote favorites, voting, and comments |
-| Gelbooru | No | User ID + API key | Post queries and adding remote favorites |
-| Safebooru | Yes | None | Read only |
-| Yande.re | Yes | Username + API key, optional | Authenticated read access |
-| Rule34 | No | User ID + API key | Post queries |
-
-Credentials are configured per source from the settings page.
-
-Yande.re exposes only `Safe`, `Questionable`, and `Explicit` ratings, so this extension maps both `General` and `Sensitive` to Yande.re's `Safe` filter.
-
-### Install from source
-
-**Requirements:** [Node.js](https://nodejs.org/) 20.19 or newer and npm.
-
-```bash
-npm ci
-npm run build          # Chrome / Edge -> dist/
-npm run build:firefox  # Firefox -> dist-firefox/
-```
-
-**Chrome / Edge**
-
-1. Open `chrome://extensions/` or `edge://extensions/`.
-2. Enable **Developer mode**.
-3. Select **Load unpacked** and choose the generated `dist` directory.
-4. Open a new tab.
-
-**Firefox**
-
-1. Open `about:debugging#/runtime/this-firefox`.
-2. Select **Load Temporary Add-on**.
-3. Choose `dist-firefox/manifest.json`.
-
-Firefox 140 or newer is required by the extension manifest.
-
-### Basic usage
-
-1. Select a source from the header.
-2. Choose a rating filter. New installations start with only `General` selected; select another rating to change the results.
-3. Enter one or more tags. Prefix a tag with `-` to exclude it.
-4. Open **Filters** for score, date, dimensions, and ordering.
-5. Select a card to inspect its media, metadata, and categorized tags. Select a categorized tag name to copy the canonical name with underscores; use `+` or `-` to include or exclude it.
-6. Open the sidebar to manage filter presets or switch to the independent favorites library. Thumbnail quality and interface language are available in settings.
-
-Hover over a card for about 700 ms to open the tag inspector. Its `+` and `-` controls add include or exclude filters without leaving the grid.
-
-### Keyboard shortcuts
-
-| Key | Action |
-|---|---|
-| `Ctrl+K` | Focus search |
-| `S` | Toggle sidebar |
-| `G` / `M` / `L` | Grid / masonry / list layout |
-| `1`-`5` | Switch source |
-| `Escape` | Close details, or clear filters when details are closed |
-| `Left` / `Right` | Previous / next post in details |
-| `F` | Toggle the detail post, or the hovered thumbnail, as a local favorite |
-| `D` | Download the detail post, or the hovered thumbnail |
-| `Up` / `Down` | Vote on the current post when the source and credentials support it |
-| `Ctrl+A` | Select all loaded posts |
-| `Ctrl+D` | Download selected posts |
-
-Shortcuts can be disabled in settings.
-
-### Development
-
-```bash
-npm run dev        # Vite development server
-npm run typecheck  # TypeScript project checks
-npm test           # Unit test suite
-npm run build      # Production Chromium build
-```
-
-The development server exposes local API and media proxies because the unpacked extension normally performs those requests through its Manifest V3 service worker. Use `npm install` only when intentionally changing dependencies and updating `package-lock.json`; use `npm ci` for a reproducible checkout.
-
-### Privacy
-
-Danbooru Viewer contains no analytics or telemetry. Preferences and source credentials are stored on the device in browser extension storage; credentials are not additionally encrypted. Favorites, download history, cached media, and bounded tag metadata remain in IndexedDB on the local device. Requests normally access the selected source and its media hosts. To categorize otherwise untyped tags, searches from other sources may send tag names to Danbooru for metadata enrichment; credentials are never shared across sources. See the complete [privacy notice](PRIVACY.md).
-
-### Known limitations
-
-- Gelbooru and Rule34 require credentials for post searches.
-- Source APIs expose different metadata and authenticated actions, so comments, voting, remote favorites, pools, and relationships are not available everywhere.
-- Firefox uses a temporary add-on during source installation and removes it when Firefox restarts.
-- Browser stores may impose additional content and screenshot policies beyond the extension's General-only first-install default.
-
-### License
-
-[MIT](LICENSE)
-
----
+Danbooru Viewer 是一个 Manifest V3 浏览器扩展。它把新标签页变成统一的图片发现、整理与生成工作台：在五个 Booru 图源中找图，保留标签和来源上下文，整理到本地收藏，再用冻结的工作流快照发送到 `127.0.0.1` 上的 ComfyUI。
 
 ## 中文
 
-Danbooru Viewer 是一款 Manifest V3 浏览器扩展，把新标签页变成统一的 Booru 图片工作台，可搜索、筛选、查看、收藏和下载 Danbooru、Gelbooru、Safebooru、Yande.re 与 Rule34 的帖子。
+### 一条不断线的创作路径
 
-### 主要功能
+参考图工作流最耗时的部分，往往不是生成，而是反复切站、复制标签、下载文件、寻找工作流窗口，再确认刚才发送的到底是哪一张图。
 
-- 统一接入五个 Booru 图源
-- 标签自动补全、包含/排除条件、快捷标签，以及可重命名、更新和排序的筛选预设
-- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级过滤，并自动转换为各图源的评级语法；首次安装仅默认启用 `General`
-- 按评分、日期、最低分辨率和顺序进行高级筛选
-- 虚拟滚动的网格、瀑布流和信息列表布局，支持 2-8 列
-- 窄屏自动切换为双列布局
-- 帖子详情包含分类标签、元数据，以及图源支持时的关联标签、图集、父子帖子和评论；点击分类标签名称可复制保留下划线的规范名称
-- 大图渐进加载，可选择预览图、样图或原图；支持滚轮缩放、拖拽平移和双击复位
-- 独立本地收藏库，支持跨分组搜索、排序、筛选、批量整理、自定义分组，以及带预览的 JSON 合并/覆盖导入
-- 可配置的标签复制格式，适合提示词工作流
-- 原图、样图、缩略图和可播放视频下载，支持批量选择与文件名模板
-- 亮色、暗色和跟随系统主题
-- 运行时英文与简体中文界面，可跟随浏览器语言或手动切换
-- 主网格与收藏库统一使用可配置的预览图或样图缩略图质量
-- IndexedDB 媒体缓存，保留 24 小时并限制在 96 MiB 的 LRU 预算内
+Danbooru Viewer 把这些步骤收进同一个新标签页：
+
+1. **发现**：用同一套搜索、评级与高级筛选浏览 Danbooru、Gelbooru、Safebooru、Yande.re 和 Rule34。
+2. **看清**：缩略图快速扫图，大图按预览、样图或原图渐进加载；滚轮缩放、拖拽查看细节。
+3. **留下上下文**：分类标签、作者、来源、分辨率和站点关系与图片一起呈现，标签可直接复制或加入搜索条件。
+4. **整理**：图片进入完全本地的收藏库，支持分组、批量整理、搜索和 JSON 导入导出。
+5. **生成**：从缩略图、详情、多选结果或整个收藏组直接发送到 ComfyUI；队列在页面关闭后仍可继续执行。
+
+> **截图占位：从发现到详情**  
+> 建议内容：左侧大图，右侧分类标签与元数据，突出渐进大图和标签上下文。
+
+### 为什么它适合提示词与参考图工作流
+
+- **五个图源，一套操作**：统一标签搜索、包含/排除条件、自动补全、快捷标签和可排序筛选预设。
+- **不是只有缩略图**：详情与 ComfyUI 工作台的输入放大均加载高质量资源；原图失败时按样图、预览图回退。
+- **标签直接进入工作流**：复用可配置的五类标签格式，把最终文本写入所有 `REVERSE` 节点。
+- **发送时冻结上下文**：工作流 JSON、OPTION 值、标签和输入引用在入队时形成快照，之后修改预设不会改变已排队任务。
+- **可靠的本地队列**：串行执行，显示当前节点、进度和耗时；支持排序、删除、取消、失败重试、断线等待和后台恢复。
+- **输出仍在眼前**：工作台集中查看图片与文本输出、放大结果和历史记录，可选择是否缓存输出。
+- **隐私边界明确**：没有分析、遥测或项目服务器；ComfyUI 仅允许 `127.0.0.1`，不申请任意网页访问和系统通知权限。
+
+> **截图占位：ComfyUI 工作台**  
+> 建议内容：活动工作流、OPTION 参数、串行队列、进度和输出预览。
+
+### ComfyUI 快速开始
+
+1. 启动本机 ComfyUI，默认地址为 `http://127.0.0.1:8188/`。
+2. 在 ComfyUI 中导出 **API format** JSON，而不是界面工作流 JSON。
+3. 打开 Viewer 顶部的 **ComfyUI** 工作台并导入 JSON。
+4. 激活工作流，按需填写 `OPTION*` 参数。
+5. 在图片缩略图、详情、多选工具栏、收藏组或本地文件区发送任务。
+
+工作流通过节点标题声明接入点：
+
+| 节点标题  | 用途                                                |
+| --------- | --------------------------------------------------- |
+| `INPUT`   | 接收输入图片；支持多个输入节点                      |
+| `OUTPUT*` | 收集图片或文本输出，例如 `OUTPUT1`、`OUTPUT prompt` |
+| `REVERSE` | 接收按 Viewer 设置格式化的图片标签                  |
+| `OPTION*` | 暴露可保存的文本或整数参数                          |
+
+导入时会校验节点和必需字段。每个输入生成一个独立任务，并允许重复入队。本地静态图直接发送；GIF、视频和 ugoira/ZIP 提取第一帧后进入同一图片上传链路。
+
+### 浏览与收藏能力
+
+- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级会转换为各图源语法；首次安装只启用 `General`。
+- 评分、日期、最低分辨率和排序筛选；虚拟滚动网格、瀑布流和信息列表支持 2-8 列。
+- 详情按图源能力展示分类标签、相关标签、图集、父子帖子、评论、投票与远程收藏。
+- 本地收藏支持跨组搜索、排序、筛选、批量移动，以及带预览的 JSON 合并或覆盖导入。
+- 原图、样图、缩略图和可播放视频下载，支持批量选择与文件名模板。
+- 中英文运行时切换、亮色/暗色/跟随系统主题和响应式双列布局。
+
+> **截图占位：本地收藏库**  
+> 建议内容：分组导航、批量选择工具栏和收藏结果同屏。
 
 ### 图源与凭据
 
-| 图源 | 可公开浏览 | 凭据 | 登录后能力 |
-|---|---:|---|---|
-| Danbooru | 是 | 用户名 + API Key，可选 | 远程收藏、投票和评论 |
-| Gelbooru | 否 | User ID + API Key | 查询帖子和添加远程收藏 |
-| Safebooru | 是 | 无需 | 只读 |
-| Yande.re | 是 | 用户名 + API Key，可选 | 认证只读访问 |
-| Rule34 | 否 | User ID + API Key | 查询帖子 |
+| 图源      | 公开浏览 | 凭据                   | 登录后能力           |
+| --------- | -------: | ---------------------- | -------------------- |
+| Danbooru  |       是 | 用户名 + API Key，可选 | 远程收藏、投票、评论 |
+| Gelbooru  |       否 | User ID + API Key      | 搜索、添加远程收藏   |
+| Safebooru |       是 | 无                     | 只读                 |
+| Yande.re  |       是 | 用户名 + API Key，可选 | 认证只读访问         |
+| Rule34    |       否 | User ID + API Key      | 搜索                 |
 
-每个图源的凭据在设置页中独立保存。凭据保存在本机浏览器扩展存储中，未额外加密；仅在使用或测试对应图源时发送到该图源 API。
-
-Yande.re 仅提供 `Safe`、`Questionable` 和 `Explicit` 评级，因此扩展会将 `General` 与 `Sensitive` 都映射到 Yande.re 的 `Safe` 过滤条件。
+凭据按图源保存在浏览器扩展存储中，未额外加密，并且只发送给对应图源。Yande.re 没有独立的 `General` 与 `Sensitive` 评级，二者均映射为其 `Safe` 条件。
 
 ### 从源码安装
 
-**环境要求：** [Node.js](https://nodejs.org/) 20.19 及以上版本，以及 npm。
+需要 [Node.js](https://nodejs.org/) 20.19 或更高版本及 npm。
 
 ```bash
 npm ci
@@ -176,72 +92,71 @@ npm run build          # Chrome / Edge -> dist/
 npm run build:firefox  # Firefox -> dist-firefox/
 ```
 
-**Chrome / Edge**
+Chrome / Edge：打开 `chrome://extensions/` 或 `edge://extensions/`，启用开发者模式，加载 `dist` 目录。  
+Firefox：打开 `about:debugging#/runtime/this-firefox`，选择“临时载入附加组件”，打开 `dist-firefox/manifest.json`。最低版本为 Firefox 140。
 
-1. 打开 `chrome://extensions/` 或 `edge://extensions/`。
-2. 开启**开发者模式**。
-3. 点击**加载已解压的扩展程序**，选择生成的 `dist` 目录。
-4. 打开新标签页。
+### 使用边界
 
-**Firefox**
+- ComfyUI 仅支持 HTTP(S) `127.0.0.1`，默认端口 `8188`；不支持局域网、远程实例、认证头或绕过自签名证书。
+- 运行中取消会在确认后调用实例级 `/interrupt`，可能同时中断该实例上的其他任务。
+- `/prompt` 已提交但响应丢失时，任务会标记为需要人工确认，不自动重发，以避免重复生成。
+- ComfyUI 任务媒体默认容量上限为 1 GB；活动任务输入受保护。历史默认保留 100 条，可在设置中修改。
+- 删除 Viewer 历史只删除本地元数据和缓存，不删除 ComfyUI 服务器上的文件。
+- Gelbooru 与 Rule34 必须配置凭据后才能搜索；不同图源支持的元数据和登录后操作并不完全一致。
 
-1. 打开 `about:debugging#/runtime/this-firefox`。
-2. 点击**临时载入附加组件**。
-3. 选择 `dist-firefox/manifest.json`。
-
-扩展清单要求 Firefox 140 或更高版本。
-
-### 基本使用
-
-1. 在顶部选择图源。
-2. 选择评级过滤；首次安装仅默认选中 `General`，可手动改选其他评级。
-3. 输入一个或多个标签；在标签前加 `-` 可排除该标签。
-4. 打开 **Filters** 设置评分、日期、尺寸和排序。
-5. 选择图片卡片，查看媒体、元数据和分类标签。点击分类标签名称会复制保留下划线的规范名称，`+` 和 `-` 分别添加包含与排除条件。
-6. 在侧栏管理筛选预设或进入独立收藏库；界面语言和缩略图质量可在设置页调整。
-
-鼠标在卡片上停留约 700 毫秒会打开标签检查器，可使用 `+` 和 `-` 直接添加包含或排除条件。
-
-### 键盘快捷键
-
-| 按键 | 功能 |
-|---|---|
-| `Ctrl+K` | 聚焦搜索框 |
-| `S` | 显示或隐藏侧栏 |
-| `G` / `M` / `L` | 网格 / 瀑布流 / 列表布局 |
-| `1`-`5` | 切换图源 |
-| `Escape` | 关闭详情；详情关闭时清空筛选 |
-| `Left` / `Right` | 在详情中查看上一篇 / 下一篇 |
-| `F` | 收藏或取消收藏详情帖子；未打开详情时作用于鼠标悬停的缩略图 |
-| `D` | 下载详情帖子；未打开详情时作用于鼠标悬停的缩略图 |
-| `Up` / `Down` | 图源与凭据支持时为当前帖子投票 |
-| `Ctrl+A` | 选择全部已加载帖子 |
-| `Ctrl+D` | 下载已选帖子 |
-
-可在设置页关闭键盘快捷键。
+完整数据范围与权限理由见[隐私声明](PRIVACY.md)。
 
 ### 开发与验证
 
 ```bash
-npm run dev        # 启动 Vite 开发服务器
-npm run typecheck  # TypeScript 项目检查
-npm test           # 单元测试
-npm run build      # 生成 Chromium 正式构建
+npm run dev
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+npm run build:all
+npm run validate:artifacts
 ```
 
-开发服务器提供本地 API 和媒体代理；安装为扩展后，请求由 Manifest V3 Service Worker 处理。只有在有意调整依赖并更新 `package-lock.json` 时才使用 `npm install`；检出源码后的可重复安装使用 `npm ci`。
+## English
 
-### 隐私
+### From reference search to local generation
 
-项目不包含分析或遥测。偏好设置和图源凭据保存在本机浏览器扩展存储中，凭据未额外加密；收藏、下载历史、媒体缓存和有界标签元数据缓存在本机 IndexedDB。网络请求通常访问当前图源及其媒体域名；为了补充其他图源缺失的标签分类，扩展可能把标签名称发送到 Danbooru 查询元数据，但不会跨图源发送凭据。完整说明见[隐私声明](PRIVACY.md)。
+Danbooru Viewer turns the browser's new tab into one continuous image workflow. Search five Booru sources through one interface, inspect full-quality media with its tag context, organize references in a local library, then send a thumbnail, selection, favorite group, or local file directly to ComfyUI on `127.0.0.1`.
 
-### 已知限制
+The handoff preserves what matters. Each queued task freezes its API workflow, `OPTION*` values, formatted tags, and input reference. The persistent serial queue keeps running after the Viewer closes, waits through local service outages, restores after background restarts, and brings image and text outputs back into the workbench.
 
-- Gelbooru 与 Rule34 必须配置凭据后才能搜索帖子。
-- 各图源提供的元数据与登录后操作并不一致，评论、投票、远程收藏、图集和父子关系并非处处可用。
-- 从源码载入 Firefox 时使用临时附加组件，Firefox 重启后需要重新载入。
-- 浏览器商店可能在首次安装仅启用 `General` 的产品默认值之外，另有内容与截图政策。
+### Product highlights
 
-### 许可证
+- Unified search for Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34
+- Autocomplete, include/exclude tags, quick tags, reusable filter presets, ratings, score, date, dimensions, and sorting
+- Virtualized grid, masonry, and dense list layouts with progressive preview, sample, or original media
+- Categorized tags, source metadata, relationships, pools, comments, voting, and remote favorites where supported
+- A fully local favorites library with groups, batch organization, search, filtering, and reviewed JSON import
+- Direct ComfyUI actions from cards, details, selections, favorite groups, and local files or folders
+- API workflow management, editable options, progress, current node, elapsed time, outputs, history, retry, and cancellation
+- First-frame normalization for GIF, video, and ugoira/ZIP inputs
+- English and Simplified Chinese UI, responsive layouts, and light, dark, or system themes
+- No analytics or telemetry; localhost-only ComfyUI access and no arbitrary webpage permission
+
+### ComfyUI convention
+
+Export an **API format** JSON workflow and import it in the workbench. Node titles define the integration contract: `INPUT` receives images, `OUTPUT*` collects image or text results, `REVERSE` receives formatted post tags, and `OPTION*` exposes saved text or integer controls. The default server is `http://127.0.0.1:8188/`.
+
+ComfyUI is intentionally limited to `127.0.0.1`. Running-task cancellation uses the instance-wide `/interrupt` endpoint after confirmation. Ambiguous `/prompt` submissions require manual confirmation instead of automatic retry. Task media uses a configurable 1 GB default local limit, while active inputs are protected from cleanup.
+
+### Build from source
+
+Requires [Node.js](https://nodejs.org/) 20.19 or newer and npm.
+
+```bash
+npm ci
+npm run build          # Chrome / Edge -> dist/
+npm run build:firefox  # Firefox -> dist-firefox/
+```
+
+Load `dist` as an unpacked extension in Chromium, or load `dist-firefox/manifest.json` as a temporary add-on in Firefox 140 or newer. See the [privacy notice](PRIVACY.md) for the complete local storage, network, and permission model.
+
+## License
 
 [MIT](LICENSE)

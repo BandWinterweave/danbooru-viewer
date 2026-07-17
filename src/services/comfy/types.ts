@@ -84,7 +84,7 @@ export interface ComfyTaskSummary {
   serverUrl: string;
   promptId?: string;
   progress?: { value: number; max: number; nodeId?: string; nodeLabel?: string };
-  thumbnail?: { kind: 'url'; url: string } | { kind: 'blob'; blobKey: string };
+  thumbnail?: { kind: 'url'; url: string; viewUrl?: string } | { kind: 'blob'; blobKey: string };
   outputs?: ComfyOutputReference[];
   error?: { code: ComfyErrorCode; message: string };
   createdAt: number;

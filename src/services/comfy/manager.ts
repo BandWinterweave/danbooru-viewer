@@ -32,7 +32,11 @@ function summary(preset: ComfyWorkflowPreset) {
 
 function taskSummary(task: ComfyTaskSnapshot): ComfyTaskSummary {
   const thumbnail = task.input.kind === 'post'
-    ? { kind: 'url' as const, url: task.input.post.previewUrl || task.input.post.sampleUrl || task.input.post.fileUrl }
+    ? {
+        kind: 'url' as const,
+        url: task.input.post.previewUrl || task.input.post.sampleUrl || task.input.post.fileUrl,
+        viewUrl: task.input.post.fileUrl || task.input.post.sampleUrl || task.input.post.previewUrl,
+      }
     : { kind: 'blob' as const, blobKey: task.input.blobKey };
   return {
     id: task.id, batchId: task.batchId, status: task.status, workflowId: task.workflowId, sourceLabel: task.sourceLabel,

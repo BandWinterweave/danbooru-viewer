@@ -61,7 +61,11 @@ test('details, local favorites, and download form a complete workflow', async ({
   await expect(dialog.getByRole('heading', { name: '#1' })).toBeVisible();
   const detailPanel = dialog.locator('.detail-panel');
   await expect.poll(async () => (await detailPanel.boundingBox())!.width).toBeGreaterThanOrEqual(320);
-  expect(await dialog.locator('.detail-actions button, .detail-actions a').evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight))).toBe(true);
+  expect(
+    await dialog
+      .locator('.detail-actions button, .detail-actions a')
+      .evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight)),
+  ).toBe(true);
   await expect(dialog.getByTitle('Close details')).toBeFocused();
   await expect(page.locator('.app-background')).toHaveAttribute('inert', '');
   await dialog.evaluate((element) => {

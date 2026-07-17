@@ -66,7 +66,7 @@ export function PostGrid() {
         {masonry ? virtualizer.getVirtualItems().map((item) => {
            const post = visiblePosts[item.index];
           const aspect = post.imageWidth && post.imageHeight ? post.imageWidth / post.imageHeight : 1 / 1.18;
-          return <div className="masonry-item" key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ left: `calc(${(item.lane ?? 0) * 100 / responsiveColumns}% + ${(item.lane ?? 0) * 5}px)`, width: `calc(${100 / responsiveColumns}% - ${10 * (responsiveColumns - 1) / responsiveColumns}px)`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`, '--media-aspect': aspect } as React.CSSProperties}><PostCard post={post} /></div>;
+          return <div className="masonry-item" key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ left: `calc(${(item.lane ?? 0) * 100 / responsiveColumns}% + ${(item.lane ?? 0) * 10 / responsiveColumns}px)`, width: `calc(${100 / responsiveColumns}% - ${10 * (responsiveColumns - 1) / responsiveColumns}px)`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`, '--media-aspect': aspect } as React.CSSProperties}><PostCard post={post} /></div>;
         }) : virtualizer.getVirtualItems().map((row) => {
            const rowPosts = visiblePosts.slice(row.index * responsiveColumns, (row.index + 1) * responsiveColumns);
           return <div className="post-grid virtual-row" key={row.key} ref={virtualizer.measureElement} data-index={row.index} style={{ transform: `translateY(${row.start - virtualizer.options.scrollMargin}px)` }}>{rowPosts.map((post) => <PostCard key={`${post.source}:${post.id}`} post={post} />)}</div>;
