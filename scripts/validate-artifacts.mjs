@@ -23,6 +23,8 @@ const requiredHostPermissions = new Set([
   'https://*.safebooru.org/*',
   'https://*.yande.re/*',
   'https://*.rule34.xxx/*',
+  'http://127.0.0.1/*',
+  'https://127.0.0.1/*',
 ]);
 
 async function filesIn(directory, prefix = '') {

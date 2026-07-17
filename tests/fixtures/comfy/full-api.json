@@ -1,0 +1,11 @@
+{
+  "1": { "class_type": "LoadImage", "inputs": { "image": "a.png" }, "_meta": { "title": "INPUT" } },
+  "2": { "class_type": "LoadImage", "inputs": { "image": "b.png" }, "_meta": { "title": "INPUT" } },
+  "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "old" }, "_meta": { "title": "REVERSE" } },
+  "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "old two" }, "_meta": { "title": "REVERSE" } },
+  "4": { "class_type": "PrimitiveString", "inputs": { "text": "draft" }, "_meta": { "title": "OPTION prompt" } },
+  "5": { "class_type": "PrimitiveInt", "inputs": { "value": 20 }, "_meta": { "title": "OPTION steps" } },
+  "6": { "class_type": "KSampler", "inputs": { "steps": ["5", 0] } },
+  "7": { "class_type": "SaveImage", "inputs": { "images": ["6", 0] }, "_meta": { "title": "OUTPUT image" } },
+  "8": { "class_type": "SaveText", "inputs": { "text": ["3", 0] }, "_meta": { "title": "OUTPUT text" } }
+}

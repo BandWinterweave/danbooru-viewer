@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.12",
+    "fflate": "^0.8.2",
     "idb-keyval": "^6.3.0",
     "ky": "^2.0.2",
     "lucide-react": "^0.468.0",

@@ -20,7 +20,9 @@
     "https://*.gelbooru.com/*",
     "https://*.safebooru.org/*",
     "https://*.yande.re/*",
-    "https://*.rule34.xxx/*"
+    "https://*.rule34.xxx/*",
+    "http://127.0.0.1/*",
+    "https://127.0.0.1/*"
   ],
   "declarative_net_request": {
     "rule_resources": [

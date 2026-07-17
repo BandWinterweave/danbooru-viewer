@@ -24,6 +24,14 @@ test('mobile workspace remains usable and free of horizontal overflow', async ({
   await sidebar.getByRole('button', { name: /Discover/ }).click();
   await expect(page.getByRole('search')).toBeVisible();
 
+  await page.getByRole('button', { name: 'ComfyUI', exact: true }).click();
+  const workbench = page.getByRole('dialog', { name: 'ComfyUI Workbench' });
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByRole('heading', { name: 'Workflows' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= window.innerWidth)).toBe(true);
+  await workbench.getByTitle('Close').click();
+  await expect(page.getByRole('search')).toBeVisible();
+
   await page.getByRole('button', { name: 'Open sidebar' }).click();
   await page.locator('.sidebar-scrim').click({ position: { x: 400, y: 400 } });
   await expect(sidebar).toBeHidden();

@@ -1,4 +1,4 @@
-import { Check, CircleCheck, ClipboardCheck, Copy, FolderPlus, Heart, Minus, Plus } from 'lucide-react';
+import { Check, CircleCheck, ClipboardCheck, Copy, FolderPlus, Heart, Minus, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFilterStore } from '../../stores/filter-store';
@@ -15,6 +15,7 @@ import { formatTagForCopy, formatTagsForCopy, type TagCopyOptions } from '../../
 import { useI18n } from '../../i18n/runtime';
 import { notify, runAsync } from '../../services/notifications';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
+import { sendPostsToComfy } from '../../services/comfy/send';
 
 function orderedTags(post: UnifiedPost) {
   const order = { artist: 0, character: 1, copyright: 2, general: 3, meta: 4 };
@@ -148,6 +149,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
     <article className={`post-card thumbnail-container ${layout === 'list' ? 'post-card--list' : ''}`} data-post-id={post.id} data-post-url={postUrl} data-file-url={post.fileUrl} onMouseEnter={trackDwell} onMouseMove={trackDwell} onMouseLeave={leaveCard}>
       <button className={`post-select ${selected ? 'is-selected' : ''}`} title={selected ? postMessages.card.removeFromBatch : postMessages.card.addToBatch} aria-label={selected ? postMessages.card.removeFromBatch : postMessages.card.addToBatch} onClick={(event) => { event.stopPropagation(); toggleSelected(post); }}><Check size={13} /></button>
       <button className={`post-copy ${copied ? 'is-copied' : ''}`} title={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} aria-label={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} onClick={copyTags}>{copied ? <ClipboardCheck size={13} /> : <Copy size={13} />}</button>
+      <button className="post-comfy" title="Send to ComfyUI" aria-label="Send to ComfyUI" onClick={(event) => { event.stopPropagation(); void sendPostsToComfy([post]); }}><Sparkles size={13} /></button>
       {downloaded && <span className="downloaded-badge" title={postMessages.card.previouslyDownloaded}><CircleCheck size={12} /> {postMessages.card.downloaded}</span>}
       <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.length ? tags.map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) : postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader === 'unknown' ? postMessages.common.unknown : post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{postMessages.detail.statuses[post.status ?? 'active']}</dd></div></dl></div>}

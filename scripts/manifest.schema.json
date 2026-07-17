@@ -27,7 +27,7 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "type": "string", "pattern": "^https://" }
+      "items": { "type": "string", "pattern": "^https?://" }
     },
     "background": {
       "type": "object",

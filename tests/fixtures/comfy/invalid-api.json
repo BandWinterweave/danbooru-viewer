@@ -1,0 +1,5 @@
+{
+  "1": { "class_type": "LoadImage", "inputs": {}, "_meta": { "title": "INPUT" } },
+  "2": { "class_type": "PrimitiveInt", "inputs": { "value": 1.5 }, "_meta": { "title": "OPTION steps" } },
+  "3": { "class_type": "SaveImage", "_meta": { "title": "OUTPUT" } }
+}

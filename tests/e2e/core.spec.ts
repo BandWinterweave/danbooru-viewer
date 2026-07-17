@@ -59,6 +59,9 @@ test('details, local favorites, and download form a complete workflow', async ({
   await trigger.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '#1' })).toBeVisible();
+  const detailPanel = dialog.locator('.detail-panel');
+  await expect.poll(async () => (await detailPanel.boundingBox())!.width).toBeGreaterThanOrEqual(320);
+  expect(await dialog.locator('.detail-actions button, .detail-actions a').evaluateAll((items) => items.every((item) => item.scrollHeight <= item.clientHeight))).toBe(true);
   await expect(dialog.getByTitle('Close details')).toBeFocused();
   await expect(page.locator('.app-background')).toHaveAttribute('inert', '');
   await dialog.evaluate((element) => {
@@ -90,6 +93,17 @@ test('details, local favorites, and download form a complete workflow', async ({
   await expect(trigger).toBeFocused();
 });
 
+test('grid and masonry column control reaches 12 without horizontal overflow', async ({ mockedPage: page }) => {
+  const columns = page.locator('.columns-control input');
+  await columns.fill('12');
+  await expect(page.locator('.columns-control output')).toHaveText('12');
+  await expect(page.locator('.virtual-grid')).toHaveAttribute('style', /--grid-columns: 12/);
+  await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByTitle('Masonry layout').click();
+  await expect(page.locator('.virtual-grid')).toHaveAttribute('style', /--grid-columns: 12/);
+  await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('visible count and empty feedback follow preview filtering', async ({ mockedPage: page }) => {
   const search = page.getByPlaceholder('Search tags, artists, characters...');
   await search.fill('unavailable_preview');
@@ -98,6 +112,22 @@ test('visible count and empty feedback follow preview filtering', async ({ mocke
   await page.getByTitle('Hide unavailable previews').click();
   await expect(page.getByText('0 loaded', { exact: true })).toBeVisible();
   await expect(page.getByText('All matching previews are hidden')).toBeVisible();
+});
+
+test('ComfyUI workbench is reachable and stays within the desktop viewport', async ({ mockedPage: page }) => {
+  const discoverSearch = page.getByRole('search');
+  const trigger = page.getByRole('button', { name: 'ComfyUI', exact: true });
+  await trigger.click();
+  const workbench = page.getByRole('dialog', { name: 'ComfyUI Workbench' });
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByRole('navigation', { name: 'ComfyUI Workbench' })).toBeVisible();
+  await expect(workbench.getByRole('heading', { name: 'Workflows' })).toBeVisible();
+  await expect(workbench.getByRole('button', { name: 'Import' })).toBeVisible();
+  await expect(discoverSearch).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= window.innerWidth)).toBe(true);
+  await workbench.getByTitle('Close').click();
+  await expect(workbench).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test('reserved gutter absorbs every inline tag action without adding a wrapped row', async ({ mockedPage: page }) => {

@@ -1,4 +1,4 @@
-import { ImageOff, KeyRound, Moon, Settings, SlidersHorizontal, Sun } from 'lucide-react';
+import { ImageOff, KeyRound, Moon, Settings, SlidersHorizontal, Sparkles, Sun } from 'lucide-react';
 import { useRef } from 'react';
 import { booruSources } from '../../services/booru-adapters';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -11,7 +11,7 @@ import { useI18n } from '../../i18n/runtime';
 import { runAsync } from '../../services/notifications';
 
 export function Header() {
-  const { messages: { shell: shellMessages } } = useI18n();
+  const { messages: { shell: shellMessages, comfy: comfyMessages } } = useI18n();
   const theme = useSettingsStore((state) => state.theme);
   const setTheme = useSettingsStore((state) => state.setTheme);
   const activeSource = useSettingsStore((state) => state.activeSource);
@@ -23,6 +23,8 @@ export function Header() {
   const setHideUnavailablePreviews = useSettingsStore((state) => state.setHideUnavailablePreviews);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const view = useUiStore((state) => state.view);
+  const openComfy = useUiStore((state) => state.openComfy);
+  const comfyOpen = useUiStore((state) => state.comfyOpen);
   const themeLabel = theme === 'system' ? shellMessages.settings.followSystem : theme === 'light' ? shellMessages.settings.light : shellMessages.settings.dark;
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
   const openOptions = () => {
@@ -50,8 +52,9 @@ export function Header() {
       {view === 'browse' && <div className="search-row" ref={searchAreaRef}>
         <SearchBar />
           <RatingQuickToggle />
-          <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} aria-expanded={filtersOpen} aria-controls="advanced-filters" title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
-          <button className={`meta-shortcut preview-toggle ${hideUnavailablePreviews ? 'is-active' : ''}`} aria-pressed={hideUnavailablePreviews} title={shellMessages.header.hideUnavailablePreviews} onClick={() => setHideUnavailablePreviews(!hideUnavailablePreviews)}><ImageOff size={15} /> {shellMessages.header.hideUnavailable}</button>
+           <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} aria-expanded={filtersOpen} aria-controls="advanced-filters" title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
+           <button className={`meta-shortcut comfy-shortcut ${comfyOpen ? 'is-active' : ''}`} aria-haspopup="dialog" aria-expanded={comfyOpen} title={comfyMessages.workbench} onClick={openComfy}><Sparkles size={15} /> {comfyMessages.name}</button>
+           <button className={`meta-shortcut preview-toggle ${hideUnavailablePreviews ? 'is-active' : ''}`} aria-pressed={hideUnavailablePreviews} title={shellMessages.header.hideUnavailablePreviews} onClick={() => setHideUnavailablePreviews(!hideUnavailablePreviews)}><ImageOff size={15} /> {shellMessages.header.hideUnavailable}</button>
       </div>}
       {view === 'browse' && <><AdvancedFilter open={filtersOpen} /><FilterChipBar onAddFilter={focusSearch} /></>}
     </header>

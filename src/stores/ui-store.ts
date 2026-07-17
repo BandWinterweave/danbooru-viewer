@@ -11,10 +11,14 @@ interface UiStore {
   hoveredPost: UnifiedPost | null;
   detailTrigger: HTMLElement | null;
   advancedFiltersOpen: boolean;
+  comfyOpen: boolean;
+  comfyTrigger: HTMLElement | null;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   detailContext: 'browse' | 'favorites';
   setView: (view: 'browse' | 'favorites') => void;
+  openComfy: () => void;
+  closeComfy: () => void;
   openDetail: (post: UnifiedPost, context?: 'browse' | 'favorites') => void;
   closeDetail: () => void;
   setCurrentPost: (post: UnifiedPost) => void;
@@ -33,8 +37,12 @@ export const useUiStore = create<UiStore>()(persist(
     hoveredPost: null,
     detailTrigger: null,
     advancedFiltersOpen: false,
+    comfyOpen: false,
+    comfyTrigger: null,
     detailContext: 'browse',
     setView: (view) => set({ view }),
+    openComfy: () => set({ comfyOpen: true, comfyTrigger: typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null }),
+    closeComfy: () => set({ comfyOpen: false }),
     toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
     openDetail: (post, detailContext = 'browse') => set({

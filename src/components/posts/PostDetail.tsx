@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, Sparkles, X } from 'lucide-react';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
@@ -18,6 +18,7 @@ import { usePostDetailResources, type DetailResource } from '../../hooks/usePost
 import { resolveSourceAccess } from '../../services/booru-adapters/source-access';
 import { PostDetailMedia } from './PostDetailMedia';
 import { formatTagForCopy, type TagCopyOptions } from '../../services/tag-copy';
+import { sendPostsToComfy } from '../../services/comfy/send';
 
 function formatBytes(bytes: number) {
   if (!bytes) return getMessages().posts.common.unknown;
@@ -184,6 +185,7 @@ export function PostDetail() {
           <button className={isLocal ? 'is-active' : ''} disabled={!favoritesHydrated || busy} title={!favoritesHydrated ? postMessages.detail.favoritesLoading : undefined} onClick={() => void runAction(() => toggleLocal(post))}><Heart size={15} fill={isLocal ? 'currentColor' : 'none'} />{isLocal ? postMessages.detail.savedLocally : postMessages.detail.saveLocally}</button>
           <button className={isRemote ? 'is-active' : ''} disabled={busy || !authenticated || !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite)} title={!authenticated ? postMessages.detail.apiCredentialsRequired : !(isRemote ? access?.capabilities.removeFavorite : access?.capabilities.addFavorite) ? postMessages.detail.remoteFavoritesUnsupported : postMessages.detail.toggleRemoteFavorite} onClick={() => void runAction(() => toggleRemote(post, access?.credentials))}><Heart size={15} fill={isRemote ? 'currentColor' : 'none'} /> {postMessages.detail.remote}</button>
           <DownloadMenu post={post} />
+          <button title="Send to ComfyUI" onClick={() => void sendPostsToComfy([post])}><Sparkles size={15} /> ComfyUI</button>
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.upvote} onClick={() => void runAction(() => adapter!.vote!(post.id, 1, credential!))}><ArrowUp size={15} /></button>
           <button disabled={busy || !authenticated || !adapter?.vote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.downvote} onClick={() => void runAction(() => adapter!.vote!(post.id, -1, credential!))}><ArrowDown size={15} /></button>
           <button disabled={busy || !authenticated || !adapter?.unvote} title={!authenticated ? postMessages.detail.apiCredentialsRequired : postMessages.detail.removeVote} onClick={() => void runAction(() => adapter!.unvote!(post.id, credential!))}><CircleOff size={15} /></button>

@@ -26,6 +26,14 @@ export const zhCN = {
     downloadReady: '下载已开始',
     downloadFailed: '下载失败',
   },
+  comfy: {
+    name: 'ComfyUI', workbench: 'ComfyUI 工作台', checking: '正在检查', connected: '已连接', waiting: '等待服务', loading: '正在加载 ComfyUI 状态…',
+    queue: '队列', workflows: '工作流', history: '历史', localMedia: '本地媒体', dropFiles: '将文件或文件夹拖放到此处', files: '选择文件', folder: '选择文件夹', import: '导入', active: '已激活', preset: '预设',
+    importEmpty: '导入 ComfyUI API JSON 工作流以开始使用。', workflowOptions: '工作流参数', saveOptions: '保存参数', serialExecution: '串行执行', activeTasks: (count: number) => `${count} 个活动任务`, queueEmpty: '排队任务会显示在这里。',
+    localRecords: '本地记录', clear: '清空', historyEmpty: '完成后的图片和文本输出会显示在这里。', send: '发送到 ComfyUI', sendSelection: '将所选项发送到 ComfyUI', sendGroup: '将分组发送到 ComfyUI',
+    noWorkflow: '没有已激活的 ComfyUI 工作流', noWorkflowBody: '请打开 ComfyUI 工作台，导入或激活 API 工作流。', sent: '已发送到 ComfyUI', tasksAdded: (count: number) => `已向队列添加 ${count} 个任务。`, confirmBatch: (count: number) => `将 ${count} 个项目作为独立任务发送到 ComfyUI？`,
+    settingsDescription: '本地工作流执行、任务历史和媒体缓存。仅允许 127.0.0.1。', serverAddress: '服务器地址', historyRecords: '历史记录数', storageLimit: '存储上限（MB）', replaceReverse: '使用格式化图片标签替换 REVERSE 文本', cacheOutputs: '在本地缓存输出图片', saveSettings: '保存 ComfyUI 设置', saved: '已保存',
+  },
   shell: {
     header: {
       brandName: 'Danbooru',

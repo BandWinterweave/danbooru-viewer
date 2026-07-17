@@ -31,6 +31,14 @@ describe('settings store migration', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"thumbnailQuality":"sample"');
   });
 
+  it('clamps grid and masonry columns to the 2-12 range', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setColumns(99);
+    expect(store.getState().columns).toBe(12);
+    store.getState().setColumns(1);
+    expect(store.getState().columns).toBe(2);
+  });
+
   it('defaults a current-version stored setting without thumbnail quality to preview', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { theme: 'dark', detailImageQuality: 'original' }, version: 2 }));
 

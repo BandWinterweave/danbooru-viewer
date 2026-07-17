@@ -127,7 +127,7 @@ export function Sidebar() {
       <div className="sidebar-heading"><span>{shellMessages.sidebar.browse}</span><button title={shellMessages.sidebar.collapse} aria-label={shellMessages.sidebar.close} onClick={toggle}><PanelLeftClose size={16} /></button></div>
       <nav className="side-nav">
          <button className={view === 'browse' ? 'is-current' : ''} onClick={() => openView('browse')}><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
-         <button className={view === 'favorites' ? 'is-current' : ''} onClick={() => openView('favorites')}><Heart size={16} /> {actionMessages.favorites.library} <span>{favorites.length}</span></button>
+          <button className={view === 'favorites' ? 'is-current' : ''} onClick={() => openView('favorites')}><Heart size={16} /> {actionMessages.favorites.library} <span>{favorites.length}</span></button>
          <button onClick={() => { openView('browse'); setMeta({ order: 'score' }); }}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
          <button onClick={() => { openView('browse'); setMeta({ order: 'rank' }); }}><Clock3 size={16} /> {shellMessages.sidebar.trending}</button>
          <button onClick={() => { openView('browse'); setMeta({ order: 'random' }); }}><Shuffle size={16} /> {shellMessages.sidebar.random}</button>

@@ -25,6 +25,11 @@ interface SettingsStore {
   copyTagsUseUnderscores: boolean;
   copyTagsEscapeParentheses: boolean;
   hideUnavailablePreviews: boolean;
+  comfyBaseUrl: string;
+  comfyHistoryLimit: number;
+  comfyStorageLimitBytes: number;
+  comfyReplaceReverseWithTags: boolean;
+  comfyCacheOutputs: boolean;
   credentials: Partial<Record<BooruSource, Credentials>>;
   credentialRevisions: Partial<Record<BooruSource, number>>;
   setActiveSource: (source: BooruSource) => void;
@@ -42,6 +47,11 @@ interface SettingsStore {
   setCopyTagsUseUnderscores: (enabled: boolean) => void;
   setCopyTagsEscapeParentheses: (enabled: boolean) => void;
   setHideUnavailablePreviews: (enabled: boolean) => void;
+  setComfyBaseUrl: (value: string) => void;
+  setComfyHistoryLimit: (value: number) => void;
+  setComfyStorageLimitBytes: (value: number) => void;
+  setComfyReplaceReverseWithTags: (enabled: boolean) => void;
+  setComfyCacheOutputs: (enabled: boolean) => void;
   setCredentials: (source: BooruSource, username: string, apiKey: string) => void;
 }
 
@@ -61,12 +71,17 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     copyTagsUseUnderscores: true,
     copyTagsEscapeParentheses: false,
     hideUnavailablePreviews: false,
+    comfyBaseUrl: 'http://127.0.0.1:8188/',
+    comfyHistoryLimit: 100,
+    comfyStorageLimitBytes: 1024 * 1024 * 1024,
+    comfyReplaceReverseWithTags: true,
+    comfyCacheOutputs: true,
     credentials: {},
     credentialRevisions: {},
     setActiveSource: (activeSource) => set({ activeSource }),
     setTheme: (theme) => set({ theme }),
     setLanguage: (language) => set({ language }),
-    setColumns: (columns) => set({ columns: Math.min(Math.max(columns, 2), 8) }),
+    setColumns: (columns) => set({ columns: Math.min(Math.max(columns, 2), 12) }),
     setLayout: (layout) => set({ layout }),
     setDetailImageQuality: (detailImageQuality) => set({ detailImageQuality }),
     setThumbnailQuality: (thumbnailQuality) => set({ thumbnailQuality }),
@@ -78,6 +93,11 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setCopyTagsUseUnderscores: (copyTagsUseUnderscores) => set({ copyTagsUseUnderscores }),
     setCopyTagsEscapeParentheses: (copyTagsEscapeParentheses) => set({ copyTagsEscapeParentheses }),
     setHideUnavailablePreviews: (hideUnavailablePreviews) => set({ hideUnavailablePreviews }),
+    setComfyBaseUrl: (comfyBaseUrl) => set({ comfyBaseUrl: comfyBaseUrl.trim() }),
+    setComfyHistoryLimit: (comfyHistoryLimit) => set({ comfyHistoryLimit: Math.min(1000, Math.max(10, Math.round(comfyHistoryLimit) || 100)) }),
+    setComfyStorageLimitBytes: (comfyStorageLimitBytes) => set({ comfyStorageLimitBytes: Math.min(10 * 1024 ** 3, Math.max(64 * 1024 ** 2, Math.round(comfyStorageLimitBytes) || 1024 ** 3)) }),
+    setComfyReplaceReverseWithTags: (comfyReplaceReverseWithTags) => set({ comfyReplaceReverseWithTags }),
+    setComfyCacheOutputs: (comfyCacheOutputs) => set({ comfyCacheOutputs }),
     setCredentials: (source, username, apiKey) => set((state) => ({
       credentials: { ...state.credentials, [source]: { username: username.trim(), apiKey: apiKey.trim() } },
       credentialRevisions: { ...state.credentialRevisions, [source]: (state.credentialRevisions[source] ?? 0) + 1 },
@@ -86,7 +106,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
   {
     name: 'danbooru-settings',
     storage: createJSONStorage(() => extensionStorage),
-    version: 2,
+    version: 3,
     migrate: (persistedState) => {
       if (!persistedState || typeof persistedState !== 'object') return persistedState as SettingsStore;
       const state = { ...persistedState as Record<string, unknown> };
