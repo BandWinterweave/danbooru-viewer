@@ -4,11 +4,11 @@
 
 A Manifest V3 browser extension that turns the new tab page into a fast, image-first Booru workspace.
 
-![Local Image](./docs/screenshots/1.png)
-![Local Image](./docs/screenshots/2.png)
-![Local Image](./docs/screenshots/3.png)
-![Local Image](./docs/screenshots/4.png)
-![Local Image](./docs/screenshots/5.png)
+![Danbooru Viewer screenshot 1](./docs/screenshots-20260717/1.png)
+![Danbooru Viewer screenshot 2](./docs/screenshots-20260717/2.png)
+![Danbooru Viewer screenshot 3](./docs/screenshots-20260717/3.png)
+![Danbooru Viewer screenshot 4](./docs/screenshots-20260717/4.png)
+![Danbooru Viewer screenshot 5](./docs/screenshots-20260717/5.png)
 
 ---
 
