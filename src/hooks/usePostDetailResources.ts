@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BooruAdapter, CommentRecord, Credentials, RelatedTagRecord } from '../types/api';
 import type { PoolRecord, UnifiedPost } from '../types/post';
+import { getMessages } from '../i18n/runtime-core';
 
 export interface DetailResource<T> {
   status: 'unavailable' | 'loading' | 'success' | 'error';
@@ -30,7 +31,7 @@ function useResource<T>(enabled: boolean, identity: string, initial: T, load: (s
     void load(controller.signal).then(
       (result) => { if (!controller.signal.aborted) setState({ status: result.error ? 'error' : 'success', data: result.data, error: result.error ?? null, identity }); },
       (error: unknown) => {
-        if (!controller.signal.aborted) setState((current) => ({ status: 'error', data: current.data, error: error instanceof Error ? error.message : 'Request failed', identity }));
+        if (!controller.signal.aborted) setState((current) => ({ status: 'error', data: current.data, error: error instanceof Error ? error.message : getMessages().posts.common.requestFailed, identity }));
       },
     );
     return () => controller.abort();
@@ -45,9 +46,9 @@ const EMPTY_RELATED: RelatedTagRecord[] = [];
 const EMPTY_POOLS: PoolRecord[] = [];
 const EMPTY_RELATIONS: UnifiedPost[] = [];
 
-export function usePostDetailResources(open: boolean, post: UnifiedPost | null, adapter: BooruAdapter | null, credentials?: Credentials) {
+export function usePostDetailResources(open: boolean, post: UnifiedPost | null, adapter: BooruAdapter | null, credentials?: Credentials, credentialRevision = 0) {
   const postKey = post ? `${post.source}:${post.id}` : '';
-  const credentialKey = credentials ? `${credentials.username}:${[...credentials.apiKey].reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0, 0)}` : 'public';
+  const credentialKey = credentials ? `credential-${credentialRevision}` : 'public';
   const leadTag = post?.tags.find((tag) => tag.category === 'artist')?.name ?? post?.tags.find((tag) => tag.category === 'general')?.name ?? '';
   const poolKey = post?.poolIds?.join(',') ?? '';
   const relationKey = post ? `${post.parentId ?? ''}:${post.hasChildren}` : '';
@@ -62,7 +63,7 @@ export function usePostDetailResources(open: boolean, post: UnifiedPost | null, 
     const settled = await Promise.allSettled(requests);
     const data = settled.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
     const failed = settled.filter((result) => result.status === 'rejected');
-    return { data, error: failed.length ? `${failed.length} related request${failed.length === 1 ? '' : 's'} failed` : undefined };
+    return { data, error: failed.length ? getMessages().posts.detail.relatedRequestsFailed(failed.length) : undefined };
   }, [adapter, credentials, post?.hasChildren, post?.id, post?.parentId]);
 
   const comments = useResource(open && Boolean(post && adapter?.getComments), `${postKey}:${credentialKey}:comments`, EMPTY_COMMENTS, loadComments);

@@ -98,4 +98,16 @@ describe('post detail resources', () => {
 
     expect(result.current.comments.data[0]?.postId).toBe(2);
   });
+
+  it('reloads on a non-sensitive credential revision without putting credentials in resource state', async () => {
+    const getComments = vi.fn().mockResolvedValue([]);
+    const source = adapter({ getComments });
+    const current = post({ parentId: null, hasChildren: false, poolIds: [], tags: [] });
+    const credentials = { username: 'private-user', apiKey: 'private-key' };
+    const { rerender, result } = renderHook(({ revision }) => usePostDetailResources(true, current, source, credentials, revision), { initialProps: { revision: 1 } });
+    await waitFor(() => expect(result.current.comments.status).toBe('success'));
+    rerender({ revision: 2 });
+    await waitFor(() => expect(getComments).toHaveBeenCalledTimes(2));
+    expect(JSON.stringify(result.current)).not.toMatch(/private-user|private-key/);
+  });
 });

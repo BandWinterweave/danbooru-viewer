@@ -9,6 +9,8 @@ import { useKeyboard } from '../hooks/useKeyboard';
 import { ToastViewport } from '../components/feedback/ToastViewport';
 import { useTheme } from '../hooks/useTheme';
 import { runAsync } from '../services/notifications';
+import { FavoriteLibrary } from '../components/favorites/FavoriteLibrary';
+import { useUiStore } from '../stores/ui-store';
 
 export default function App() {
   useKeyboard();
@@ -17,13 +19,15 @@ export default function App() {
   const ratings = useFilterStore((state) => state.ratings);
   const activeSource = useSettingsStore((state) => state.activeSource);
   const meta = useFilterStore((state) => state.meta);
+  const view = useUiStore((state) => state.view);
 
   useEffect(() => { runAsync('storage', useFavoriteStore.getState().hydrate()); }, []);
 
   useEffect(() => {
+    if (view !== 'browse') return;
     void usePostStore.getState().search(useFilterStore.getState().getSearchQuery());
     return () => usePostStore.getState().cancelSearch();
-  }, [activeSource, filters, ratings, meta]);
+  }, [activeSource, filters, ratings, meta, view]);
 
-  return <><AppShell><PostGrid /></AppShell><ToastViewport /></>;
+  return <><AppShell>{view === 'browse' ? <PostGrid /> : <FavoriteLibrary />}</AppShell><ToastViewport /></>;
 }

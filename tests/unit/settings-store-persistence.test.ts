@@ -18,6 +18,34 @@ describe('settings store migration', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { theme: 'dark', columns: 7, slideshowInterval: 12, credentials: { danbooru: { username: 'user', apiKey: 'key' } } }, version: 0 }));
     const store = await loadSettingsStore();
     expect(store.getState()).toMatchObject({ theme: 'dark', columns: 7, credentials: { danbooru: { username: 'user', apiKey: 'key' } } });
+    expect(store.getState().language).toBe('system');
+    expect(store.getState().thumbnailQuality).toBe('preview');
     expect(store.getState()).not.toHaveProperty('slideshowInterval');
+  });
+
+  it('persists the selected thumbnail quality', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setThumbnailQuality('sample');
+
+    expect(store.getState().thumbnailQuality).toBe('sample');
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('"thumbnailQuality":"sample"');
+  });
+
+  it('defaults a current-version stored setting without thumbnail quality to preview', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { theme: 'dark', detailImageQuality: 'original' }, version: 2 }));
+
+    const store = await loadSettingsStore();
+
+    expect(store.getState()).toMatchObject({ theme: 'dark', detailImageQuality: 'original', thumbnailQuality: 'preview' });
+  });
+
+  it('persists only a non-sensitive incrementing credential revision for cache identity', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setCredentials('danbooru', 'first-user', 'first-key');
+    store.getState().setCredentials('danbooru', 'second-user', 'second-key');
+    expect(store.getState().credentialRevisions.danbooru).toBe(2);
+    const persisted = localStorage.getItem(STORAGE_KEY) ?? '';
+    expect(persisted).toContain('"credentialRevisions":{"danbooru":2}');
+    expect(persisted).not.toMatch(/credentialRevisions[^}]+first-user|credentialRevisions[^}]+first-key/);
   });
 });

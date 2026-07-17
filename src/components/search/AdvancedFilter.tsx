@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { MetaFilter } from '../../types/filter';
 import { useFilterStore } from '../../stores/filter-store';
 import { useUiStore } from '../../stores/ui-store';
-import { shellMessages } from '../../i18n/en-shell';
+import { useI18n } from '../../i18n/runtime';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 export function AdvancedFilter({ open }: { open: boolean }) {
+  const { messages: { shell: shellMessages } } = useI18n();
   const meta = useFilterStore((state) => state.meta);
   const setMeta = useFilterStore((state) => state.setMetaFilter);
   const close = useUiStore((state) => state.closeAdvancedFilters);

@@ -14,5 +14,5 @@ export function CachedImage({ src = '', ...props }: ImgHTMLAttributes<HTMLImageE
     });
     return () => { current = false; release?.(); };
   }, [src]);
-  return resolvedSrc ? <img {...props} src={resolvedSrc} /> : <span className="image-cache-loading" aria-hidden="true" />;
+  return resolvedSrc ? <img {...props} src={resolvedSrc} /> : null;
 }

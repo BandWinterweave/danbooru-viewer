@@ -166,9 +166,8 @@ export const danbooruAdapter: BooruAdapter = {
     const url = new URL('/related_tag.json', BASE_URL);
     url.searchParams.set('query', tag);
     url.searchParams.set('category', 'all');
-    const data = await apiGet<{ related_tags?: Array<[string, number]> } | Array<[string, number]>>(url, credentials, signal);
-    const items = Array.isArray(data) ? data : data.related_tags ?? [];
-    return items.slice(0, 12).map(([name, category]) => ({ name, category }));
+    const data = await apiGet<unknown>(url, credentials, signal);
+    return normalizeRelatedTags(data);
   },
   async getPools(ids, credentials, signal) {
     if (!ids.length) return [];
@@ -186,3 +185,20 @@ export const danbooruAdapter: BooruAdapter = {
     return posts.map(normalizePost);
   },
 };
+
+export function normalizeRelatedTags(data: unknown) {
+  const records = Array.isArray(data)
+    ? data
+    : data && typeof data === 'object'
+      ? (Array.isArray((data as { related_tags?: unknown }).related_tags)
+          ? (data as { related_tags: unknown[] }).related_tags
+          : Array.isArray((data as { tags?: unknown }).tags) ? (data as { tags: unknown[] }).tags : [])
+      : [];
+  return records.flatMap((record) => {
+    const name = Array.isArray(record) ? record[0] : record && typeof record === 'object' ? (record as { name?: unknown }).name : undefined;
+    const category = Array.isArray(record) ? record[1] : record && typeof record === 'object' ? (record as { category?: unknown }).category : undefined;
+    return typeof name === 'string' && name.trim() && typeof category === 'number' && Number.isFinite(category)
+      ? [{ name, category }]
+      : [];
+  }).slice(0, 12);
+}

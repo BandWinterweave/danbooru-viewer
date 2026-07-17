@@ -59,4 +59,37 @@ describe('filter store', () => {
     expect(useFilterStore.getState().getSearchQuery()).toMatchObject({ tags: 'highres', scoreMin: 50, order: 'score' });
     expect(preset.sourceId).toBe('danbooru');
   });
+
+  it('renames and updates a preset while preserving its identity and creation time', () => {
+    useFilterStore.setState({
+      activeFilters: [{ id: 'tag:old', type: 'tag', label: 'old', value: 'old', mode: 'include' }],
+      ratings: ['g'],
+      meta: { scoreMin: 5 },
+      presets: [{ id: 'preset-1', name: 'Old name', sourceId: 'danbooru', filters: [], ratings: [], meta: {}, createdAt: '2026-01-01T00:00:00Z' }],
+    });
+
+    useFilterStore.getState().renamePreset('preset-1', '  New name  ');
+    useFilterStore.getState().updatePreset('preset-1');
+
+    expect(useFilterStore.getState().presets[0]).toEqual({
+      id: 'preset-1',
+      name: 'New name',
+      sourceId: 'danbooru',
+      filters: [{ id: 'tag:old', type: 'tag', label: 'old', value: 'old', mode: 'include' }],
+      ratings: ['g'],
+      meta: { scoreMin: 5 },
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  });
+
+  it('moves presets within their source while retaining the persisted array model', () => {
+    const preset = (id: string, sourceId: string) => ({ id, name: id, sourceId, filters: [], ratings: [], meta: {}, createdAt: '2026-01-01T00:00:00Z' });
+    useFilterStore.setState({ presets: [preset('a', 'danbooru'), preset('x', 'gelbooru'), preset('b', 'danbooru')] });
+
+    useFilterStore.getState().movePreset('b', -1);
+    expect(useFilterStore.getState().presets.map(({ id }) => id)).toEqual(['b', 'x', 'a']);
+
+    useFilterStore.getState().movePreset('b', -1);
+    expect(useFilterStore.getState().presets.map(({ id }) => id)).toEqual(['b', 'x', 'a']);
+  });
 });

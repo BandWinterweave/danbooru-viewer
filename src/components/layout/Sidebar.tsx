@@ -1,4 +1,4 @@
-import { Clock3, Compass, Download, Grid3X3, PanelLeftClose, Plus, Shuffle, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Clock3, Compass, Download, Grid3X3, Heart, PanelLeftClose, Pencil, Plus, RefreshCw, Shuffle, Trash2, Upload, X } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import { usePostStore } from '../../stores/post-store';
 import { useUiStore } from '../../stores/ui-store';
@@ -8,16 +8,17 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { displayImageUrl } from '../../services/api/image-url';
 import { FavoriteGroups } from '../favorites/FavoriteGroups';
 import { CachedImage } from '../posts/CachedImage';
-import { shellMessages } from '../../i18n/en-shell';
-import { actionMessages } from '../../i18n/en-actions';
-import { notify } from '../../services/notifications';
+import { useI18n } from '../../i18n/runtime';
 import { getBooruAdapter } from '../../services/booru-adapters';
 import type { TagAutocompleteResult } from '../../types/api';
 import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
-import { rememberTagMetadata, tagCategoryFor } from '../../services/booru-adapters/tag-categories';
+import { hydrateTagMetadata, rememberTagMetadata, tagCategoryFor } from '../../services/booru-adapters/tag-categories';
 
 export function Sidebar() {
+  const { locale, messages: { shell: shellMessages, domainActions: actionMessages } } = useI18n();
   const open = useUiStore((state) => state.sidebarOpen);
+  const view = useUiStore((state) => state.view);
+  const setView = useUiStore((state) => state.setView);
   const toggle = useUiStore((state) => state.toggleSidebar);
   const setOpen = useUiStore((state) => state.setSidebarOpen);
   const postCount = usePostStore((state) => state.posts.length);
@@ -26,23 +27,30 @@ export function Sidebar() {
   const presets = useFilterStore((state) => state.presets);
   const loadPreset = useFilterStore((state) => state.loadPreset);
   const deletePreset = useFilterStore((state) => state.deletePreset);
+  const renamePreset = useFilterStore((state) => state.renamePreset);
+  const updatePreset = useFilterStore((state) => state.updatePreset);
+  const movePreset = useFilterStore((state) => state.movePreset);
   const source = useSettingsStore((state) => state.activeSource);
   const quickTags = useSettingsStore((state) => state.quickTags);
   const addQuickTag = useSettingsStore((state) => state.addQuickTag);
   const removeQuickTag = useSettingsStore((state) => state.removeQuickTag);
   const credentials = useSettingsStore((state) => state.credentials[state.activeSource]);
   const favorites = useFavoriteStore((state) => state.favorites);
+  const favoritesHydrated = useFavoriteStore((state) => state.hydrated);
   const exportJson = useFavoriteStore((state) => state.exportJson);
-  const importJson = useFavoriteStore((state) => state.importJson);
   const openDetail = useUiStore((state) => state.openDetail);
-  const fileRef = useRef<HTMLInputElement>(null);
   const quickTagInputRef = useRef<HTMLInputElement>(null);
   const [quickTag, setQuickTag] = useState('');
   const [quickTagSuggestions, setQuickTagSuggestions] = useState<TagAutocompleteResult[]>([]);
   const [quickTagDropdownOpen, setQuickTagDropdownOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [, setQuickTagCategoryRevision] = useState(0);
   const suggestionListId = 'quick-tag-suggestions';
   const submitQuickTag = (event: FormEvent) => { event.preventDefault(); addQuickTag(quickTag); setQuickTag(''); };
+  const openView = (next: 'browse' | 'favorites') => {
+    setView(next);
+    if (window.matchMedia?.('(max-width: 720px)').matches) setOpen(false);
+  };
 
   useEffect(() => {
     if (window.matchMedia?.('(max-width: 720px)').matches) setOpen(false);
@@ -80,6 +88,14 @@ export function Sidebar() {
     return () => { cancelled = true; window.clearTimeout(timeout); };
   }, [source, credentials, quickTag]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateTagMetadata(source, quickTags).then(() => {
+      if (!cancelled) setQuickTagCategoryRevision((revision) => revision + 1);
+    });
+    return () => { cancelled = true; };
+  }, [source, quickTags]);
+
   const selectQuickTagSuggestion = (name: string) => {
     setQuickTag(name);
     setQuickTagDropdownOpen(false);
@@ -97,14 +113,6 @@ export function Sidebar() {
       selectQuickTagSuggestion(quickTagSuggestions[activeSuggestion].name);
     }
   };
-  const importFavorites = async (file: File) => {
-    try {
-      await importJson(file);
-      notify({ tone: 'success', title: actionMessages.favorites.importComplete });
-    } catch (error) {
-      notify({ tone: 'error', title: actionMessages.favorites.importFailed, description: error instanceof Error ? error.message : undefined });
-    }
-  };
   if (!open) return null;
   return (
     <>
@@ -112,10 +120,11 @@ export function Sidebar() {
     <aside className="sidebar" aria-label={shellMessages.sidebar.browse}>
       <div className="sidebar-heading"><span>{shellMessages.sidebar.browse}</span><button title={shellMessages.sidebar.collapse} aria-label={shellMessages.sidebar.close} onClick={toggle}><PanelLeftClose size={16} /></button></div>
       <nav className="side-nav">
-         <button className="is-current"><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
-         <button onClick={() => setMeta({ order: 'score' })}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
-         <button onClick={() => setMeta({ order: 'rank' })}><Clock3 size={16} /> {shellMessages.sidebar.trending}</button>
-         <button onClick={() => setMeta({ order: 'random' })}><Shuffle size={16} /> {shellMessages.sidebar.random}</button>
+         <button className={view === 'browse' ? 'is-current' : ''} onClick={() => openView('browse')}><Compass size={16} /> {shellMessages.sidebar.discover} <span>{postCount || '—'}</span></button>
+         <button className={view === 'favorites' ? 'is-current' : ''} onClick={() => openView('favorites')}><Heart size={16} /> {actionMessages.favorites.library} <span>{favorites.length}</span></button>
+         <button onClick={() => { openView('browse'); setMeta({ order: 'score' }); }}><Grid3X3 size={16} /> {shellMessages.sidebar.topScored}</button>
+         <button onClick={() => { openView('browse'); setMeta({ order: 'rank' }); }}><Clock3 size={16} /> {shellMessages.sidebar.trending}</button>
+         <button onClick={() => { openView('browse'); setMeta({ order: 'random' }); }}><Shuffle size={16} /> {shellMessages.sidebar.random}</button>
       </nav>
       <div className="sidebar-section">
         <h2>{shellMessages.sidebar.quickTags}</h2>
@@ -126,7 +135,7 @@ export function Sidebar() {
               {quickTagSuggestions.map((suggestion, index) => (
                 <button type="button" id={`${suggestionListId}-${index}`} role="option" aria-selected={activeSuggestion === index} className={activeSuggestion === index ? 'is-active' : ''} data-category={suggestion.category} key={suggestion.name} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={() => selectQuickTagSuggestion(suggestion.name)}>
                   <span>{suggestion.name.replaceAll('_', ' ')}</span>
-                  <small>{suggestion.postCount.toLocaleString()}</small>
+                   <small>{suggestion.postCount.toLocaleString(locale)}</small>
                 </button>
               ))}
             </div>
@@ -135,9 +144,9 @@ export function Sidebar() {
         <div className="quick-tag-list">{quickTags.map((tag) => { const category = tagCategoryFor(source, tag); return <span key={tag}><button data-category={category} onClick={() => addTag(tag, 'include')}><span className={`category-swatch category-${category}`} />{tag.replaceAll('_', ' ')}</button><button title={shellMessages.sidebar.removeQuickTag(tag)} onClick={() => removeQuickTag(tag)}><X size={11} /></button></span>; })}</div>
         {!quickTags.length && <p className="sidebar-empty">{shellMessages.sidebar.noQuickTags}</p>}
       </div>
-      <div className="sidebar-section"><h2>{shellMessages.sidebar.filterPresets}</h2>{presets.filter((preset) => preset.sourceId === source).map((preset) => <div className="sidebar-list-item" key={preset.id}><button onClick={() => loadPreset(preset.id)}>{preset.name}</button><button title={shellMessages.sidebar.deletePreset(preset.name)} onClick={() => deletePreset(preset.id)}><Trash2 size={12} /></button></div>)}{!presets.some((preset) => preset.sourceId === source) && <p className="sidebar-empty">{shellMessages.sidebar.noSavedPresets}</p>}</div>
+       <div className="sidebar-section"><h2>{shellMessages.sidebar.filterPresets}</h2>{presets.filter((preset) => preset.sourceId === source).map((preset, index, sourcePresets) => <div className="sidebar-list-item preset-list-item" key={preset.id}><button className="preset-load" onClick={() => loadPreset(preset.id)}>{preset.name}</button><div className="preset-actions"><button title={shellMessages.sidebar.renamePreset(preset.name)} onClick={() => { const name = window.prompt(shellMessages.sidebar.renamePresetPrompt(preset.name), preset.name); if (name?.trim()) renamePreset(preset.id, name); }}><Pencil size={12} /></button><button title={shellMessages.sidebar.updatePreset(preset.name)} onClick={() => { if (window.confirm(shellMessages.sidebar.confirmUpdatePreset(preset.name))) updatePreset(preset.id); }}><RefreshCw size={12} /></button><button disabled={index === 0} title={shellMessages.sidebar.movePresetUp(preset.name)} onClick={() => movePreset(preset.id, -1)}><ArrowUp size={12} /></button><button disabled={index === sourcePresets.length - 1} title={shellMessages.sidebar.movePresetDown(preset.name)} onClick={() => movePreset(preset.id, 1)}><ArrowDown size={12} /></button><button title={shellMessages.sidebar.deletePreset(preset.name)} onClick={() => deletePreset(preset.id)}><Trash2 size={12} /></button></div></div>)}{!presets.some((preset) => preset.sourceId === source) && <p className="sidebar-empty">{shellMessages.sidebar.noSavedPresets}</p>}</div>
       <FavoriteGroups />
-      <div className="sidebar-section favorite-library"><h2>{shellMessages.sidebar.recentSaves}</h2><div className="favorite-list">{favorites.slice(0, 5).map((post) => <button key={`${post.source}:${post.id}`} onClick={() => openDetail(post)}><CachedImage src={displayImageUrl(post.previewUrl)} alt="" /><span>#{post.id}<small>{post.source}</small></span></button>)}</div><div className="sidebar-file-actions"><button title={shellMessages.sidebar.exportFavorites} onClick={exportJson}><Download size={13} /> {shellMessages.sidebar.export}</button><button title={shellMessages.sidebar.importFavorites} onClick={() => fileRef.current?.click()}><Upload size={13} /> {shellMessages.sidebar.import}</button></div><input ref={fileRef} hidden type="file" accept="application/json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFavorites(file); event.target.value = ''; }} /></div>
+       <div className="sidebar-section favorite-library"><h2>{shellMessages.sidebar.recentSaves}</h2><div className="favorite-list">{favorites.slice(0, 5).map((post) => <button key={`${post.source}:${post.id}`} onClick={() => openDetail(post, 'favorites')}><CachedImage src={displayImageUrl(post.previewUrl)} alt="" /><span>#{post.id}<small>{post.source}</small></span></button>)}</div><div className="sidebar-file-actions"><button disabled={!favoritesHydrated} aria-describedby={!favoritesHydrated ? 'sidebar-favorites-not-ready' : undefined} title={favoritesHydrated ? shellMessages.sidebar.exportFavorites : actionMessages.favorites.notReady} onClick={exportJson}><Download size={13} /> {shellMessages.sidebar.export}</button><button disabled={!favoritesHydrated} aria-describedby={!favoritesHydrated ? 'sidebar-favorites-not-ready' : undefined} title={favoritesHydrated ? shellMessages.sidebar.importFavorites : actionMessages.favorites.notReady} onClick={() => openView('favorites')}><Upload size={13} /> {shellMessages.sidebar.import}</button><span id="sidebar-favorites-not-ready" className="sr-only">{!favoritesHydrated && actionMessages.favorites.notReady}</span></div></div>
     </aside>
     </>
   );

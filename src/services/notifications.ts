@@ -1,4 +1,4 @@
-import { actionMessages } from '../i18n/en-actions';
+import { getMessages } from '../i18n/runtime-core';
 
 export type ToastTone = 'success' | 'error' | 'warning' | 'info';
 export type ErrorOperation = 'api' | 'storage' | 'download' | 'permission';
@@ -20,6 +20,7 @@ export function notify(message: Omit<ToastMessage, 'id'>) {
 }
 
 export function reportOperationError(operation: ErrorOperation, error: unknown) {
+  const actionMessages = getMessages().domainActions;
   const description = error instanceof Error && error.message ? error.message.slice(0, 300) : actionMessages.errors.fallback;
   notify({ tone: 'error', title: actionMessages.errors[operation], description });
 }

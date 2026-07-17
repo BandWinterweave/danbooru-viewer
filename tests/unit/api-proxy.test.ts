@@ -9,7 +9,7 @@ describe('background API proxy', () => {
       payload: { url: 'https://example.com/posts.json', method: 'GET' },
     });
 
-    expect(response).toMatchObject({ ok: false, status: 403 });
+    expect(response).toMatchObject({ ok: false, status: 403, reason: 'invalid' });
   });
 
   it('allows a configured source and forwards authenticated writes', async () => {
@@ -35,7 +35,7 @@ describe('background API proxy', () => {
     }));
     const request = proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://safebooru.org/index.php', method: 'GET' } });
     await vi.advanceTimersByTimeAsync(15_000);
-    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request timed out' });
+    await expect(request).resolves.toEqual({ ok: false, status: 0, reason: 'timeout', error: 'Request timed out' });
   });
 
   it('cancels an owned request by request ID', async () => {
@@ -45,7 +45,7 @@ describe('background API proxy', () => {
     const request = proxyRequest({ type: 'API_REQUEST', payload: { requestId: 'search-1', url: 'https://safebooru.org/index.php', method: 'GET' } });
 
     expect(cancelProxyRequest('search-1')).toBe(true);
-    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request cancelled' });
+    await expect(request).resolves.toEqual({ ok: false, status: 0, reason: 'cancelled', error: 'Request cancelled' });
     expect(fetch.mock.calls[0]?.[1]?.signal).toMatchObject({ aborted: true });
     expect(cancelProxyRequest('search-1')).toBe(false);
   });
@@ -65,7 +65,7 @@ describe('background API proxy', () => {
     });
     const request = proxyRequest({ type: 'API_REQUEST', payload: { url: 'https://danbooru.donmai.us/posts.json', method: 'GET' } });
     await vi.advanceTimersByTimeAsync(15_000);
-    await expect(request).resolves.toEqual({ ok: false, status: 0, error: 'Request timed out' });
+    await expect(request).resolves.toEqual({ ok: false, status: 0, reason: 'timeout', error: 'Request timed out' });
   });
 
   it('does not deduplicate credential-bearing query requests', async () => {

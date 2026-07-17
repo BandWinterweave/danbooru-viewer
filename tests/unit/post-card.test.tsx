@@ -5,6 +5,9 @@ import { normalizePost } from '../../src/services/booru-adapters/danbooru';
 import { useFilterStore } from '../../src/stores/filter-store';
 import { displayImageUrl } from '../../src/services/api/image-url';
 import { useUiStore } from '../../src/stores/ui-store';
+import { usePostStore } from '../../src/stores/post-store';
+import { useSettingsStore } from '../../src/stores/settings-store';
+import { ToastViewport } from '../../src/components/feedback/ToastViewport';
 
 const post = normalizePost({
   id: 11590118,
@@ -39,6 +42,8 @@ describe('PostCard', () => {
   beforeEach(() => {
     useFilterStore.setState({ searchText: '', activeFilters: [], ratings: [] });
     useUiStore.setState({ detailOpen: false, currentPost: null });
+    useSettingsStore.setState({ layout: 'grid', copyTagCategories: ['artist', 'character', 'copyright', 'general', 'meta'], copyTagsUseUnderscores: false, copyTagsEscapeParentheses: false });
+    usePostStore.setState({ enrichTags: vi.fn().mockResolvedValue(post) });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -49,7 +54,7 @@ describe('PostCard', () => {
     const card = container.querySelector('.post-card');
 
     expect(image).toHaveAttribute('src', displayImageUrl(post.previewUrl));
-    expect(image).toHaveAttribute('data-original', post.fileUrl);
+    expect(image).not.toHaveAttribute('data-original');
     expect(link).toHaveAttribute('href', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
     expect(card).toHaveAttribute('data-post-url', 'https://danbooru.donmai.us/posts/11590118?q=re_naya');
     expect(card).not.toHaveAttribute('tabindex');
@@ -73,5 +78,42 @@ describe('PostCard', () => {
     render(<PostCard post={post} />);
     fireEvent.click(screen.getByLabelText('Open post details'));
     expect(useUiStore.getState()).toMatchObject({ detailOpen: true, currentPost: post });
+  });
+
+  it('copies a tooltip tag without adding a filter', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const { container } = render(<><PostCard post={post} /><ToastViewport /></>);
+    fireEvent.mouseMove(container.querySelector('.post-card')!, { clientX: 200, clientY: 200 });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+
+    fireEvent.click(screen.getByTitle('Copy re_naya'));
+    await act(() => Promise.resolve());
+
+    expect(writeText).toHaveBeenCalledWith('re naya');
+    expect(useFilterStore.getState().activeFilters).toEqual([]);
+  });
+
+  it('enriches mounted list cards once and renders every tag', () => {
+    const tags = Array.from({ length: 10 }, (_, index) => ({ name: `tag_${index}`, category: 'general' as const }));
+    const listPost = { ...post, tags };
+    const enrichTags = vi.fn().mockResolvedValue(listPost);
+    usePostStore.setState({ enrichTags });
+    useSettingsStore.setState({ layout: 'list' });
+
+    const { rerender } = render(<PostCard post={listPost} />);
+    expect(enrichTags).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('tag 9')).toBeInTheDocument();
+
+    rerender(<PostCard post={{ ...listPost }} />);
+    expect(enrichTags).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not enrich cards outside list layout', () => {
+    const enrichTags = vi.fn().mockResolvedValue(post);
+    usePostStore.setState({ enrichTags });
+    render(<PostCard post={post} />);
+    expect(enrichTags).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,12 @@
 import { BookmarkPlus, Plus, RotateCcw, X } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import { useSettingsStore } from '../../stores/settings-store';
-import { shellMessages } from '../../i18n/en-shell';
+import { useI18n } from '../../i18n/runtime';
 
 interface FilterChipBarProps { onAddFilter: () => void }
 
 export function FilterChipBar({ onAddFilter }: FilterChipBarProps) {
+  const { messages: { shell: shellMessages } } = useI18n();
   const filters = useFilterStore((state) => state.activeFilters);
   const ratings = useFilterStore((state) => state.ratings);
   const meta = useFilterStore((state) => state.meta);
@@ -37,7 +38,7 @@ export function FilterChipBar({ onAddFilter }: FilterChipBarProps) {
             <button className="chip-remove" title={shellMessages.filterBar.removeRating} onClick={() => toggleRating(rating)}><X size={13} /></button>
           </span>
         ))}
-        {metaEntries.map(([key, value]) => <span className="filter-chip filter-chip--meta" key={key}>{key}: {String(value)}<button className="chip-remove" title={shellMessages.filterBar.removeMeta(key)} onClick={() => setMeta({ [key]: undefined })}><X size={13} /></button></span>)}
+        {metaEntries.map(([key, value]) => { const label = shellMessages.filterBar.metaLabel(key); return <span className="filter-chip filter-chip--meta" key={key}>{label}: {String(value)}<button className="chip-remove" title={shellMessages.filterBar.removeMeta(label)} onClick={() => setMeta({ [key]: undefined })}><X size={13} /></button></span>; })}
       </div>
       <div className="filter-actions">
         <button className="quiet-button" onClick={onAddFilter}><Plus size={15} /> {shellMessages.filterBar.addFilter}</button>

@@ -4,10 +4,11 @@ import { downloadPost, type DownloadSize } from '../../services/download-service
 import { useSettingsStore } from '../../stores/settings-store';
 import type { UnifiedPost } from '../../types/post';
 import { notify } from '../../services/notifications';
-import { actionMessages } from '../../i18n/en-actions';
+import { useI18n } from '../../i18n/runtime';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 export function DownloadMenu({ post, compact = false }: { post: UnifiedPost; compact?: boolean }) {
+  const { messages: { domainActions: actionMessages } } = useI18n();
   const rule = useSettingsStore((state) => state.downloadRule);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);

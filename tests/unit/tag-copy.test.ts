@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizePost } from '../../src/services/booru-adapters/danbooru';
-import { formatTagsForCopy } from '../../src/services/tag-copy';
+import { formatTagForCopy, formatTagsForCopy } from '../../src/services/tag-copy';
 
 const post = normalizePost({
   id: 5, rating: 'g', tag_string: 'blue_sky artist_name character_(series)', tag_string_general: 'blue_sky', tag_string_artist: 'artist_name',
@@ -18,5 +18,14 @@ describe('tag copy formatting', () => {
   it('converts underscores and escapes prompt parentheses', () => {
     expect(formatTagsForCopy(post, { categories: ['character', 'copyright'], useUnderscores: false, escapeParentheses: true }))
       .toBe('character \\(series\\), sample series');
+  });
+
+  it('formats one tag with the same settings and rejects disabled categories', () => {
+    expect(formatTagForCopy({ name: 'character_(series)', category: 'character' }, { categories: ['character'], useUnderscores: true, escapeParentheses: true }))
+      .toBe('character_\\(series\\)');
+    expect(formatTagForCopy({ name: 'blue_sky', category: 'general' }, { categories: ['general'], useUnderscores: false, escapeParentheses: false }))
+      .toBe('blue sky');
+    expect(formatTagForCopy({ name: 'artist_name', category: 'artist' }, { categories: ['general'], useUnderscores: true, escapeParentheses: false }))
+      .toBeNull();
   });
 });

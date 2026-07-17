@@ -6,5 +6,9 @@
   "extensionDescription": {
     "message": "A focused new-tab workspace for browsing, filtering, saving, and downloading posts across Booru sources.",
     "description": "Extension store summary"
+  },
+  "actionTitle": {
+    "message": "Open Danbooru Viewer",
+    "description": "Browser toolbar action title"
   }
 }

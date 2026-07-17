@@ -23,4 +23,22 @@ describe('API client cancellation', () => {
     expect(requestId).toEqual(expect.any(String));
     expect(messages[1]).toEqual({ type: 'API_CANCEL', payload: { requestId } });
   });
+
+  it('does not deduplicate credential-bearing URL requests in the foreground client', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true, status: 200, data: [] });
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id', sendMessage } });
+    const url = new URL('https://gelbooru.com/index.php?user_id=7&api_key=secret');
+    await Promise.all([apiGet(url), apiGet(url)]);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('classifies proxy failures by reason when foreground and background languages differ', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: false, status: 0, reason: 'timeout', error: '请求超时' });
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id', sendMessage } });
+
+    await expect(apiGet(new URL('https://safebooru.org/index.php?case=localized-timeout'))).rejects.toMatchObject({
+      reason: 'timeout',
+      status: 0,
+    });
+  });
 });

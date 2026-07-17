@@ -1,10 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
-import { messages } from '../../i18n/en';
+import { useI18n, type LocaleMessages } from '../../i18n/runtime';
 
 interface State { error: Error | null }
 
-export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
+class ErrorBoundaryInner extends Component<{ children: ReactNode; messages: LocaleMessages }, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State { return { error }; }
@@ -14,6 +14,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   render() {
+    const { messages } = this.props;
     if (!this.state.error) return this.props.children;
     return <main className="fatal-state">
       <div className="fatal-state-mark"><AlertTriangle size={24} /></div>
@@ -23,4 +24,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
       <button className="state-action" onClick={() => window.location.reload()}><RotateCcw size={15} />{messages.actions.reload}</button>
     </main>;
   }
+}
+
+export function ErrorBoundary({ children }: { children: ReactNode }) {
+  const { messages } = useI18n();
+  return <ErrorBoundaryInner messages={messages}>{children}</ErrorBoundaryInner>;
 }

@@ -39,4 +39,17 @@ describe('filter store rating persistence', () => {
 
     expect(reloadedStore.getState().ratings).toEqual(['e']);
   });
+
+  it('restores legacy presets in their existing array order', async () => {
+    const presets = [
+      { id: 'second', name: 'Second', sourceId: 'danbooru', filters: [], ratings: ['g'], meta: {}, createdAt: '2025-02-01T00:00:00Z' },
+      { id: 'first', name: 'First', sourceId: 'danbooru', filters: [], ratings: [], meta: {}, createdAt: '2025-01-01T00:00:00Z' },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { presets }, version: 0 }));
+
+    const store = await loadFilterStore();
+
+    expect(store.getState().presets.map(({ id }) => id)).toEqual(['second', 'first']);
+    expect(store.getState().presets[0]).not.toHaveProperty('order');
+  });
 });

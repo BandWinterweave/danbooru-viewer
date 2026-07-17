@@ -5,11 +5,12 @@ import { useFilterStore } from '../../stores/filter-store';
 import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { TagAutocompleteResult } from '../../types/api';
-import { shellMessages } from '../../i18n/en-shell';
+import { useI18n } from '../../i18n/runtime';
 import { cacheSuggestions, getCachedSuggestions } from '../../services/booru-adapters/tag-suggestion-cache';
 import { rememberTagMetadata } from '../../services/booru-adapters/tag-categories';
 
 export function SearchBar() {
+  const { locale, messages: { shell: shellMessages } } = useI18n();
   const searchText = useFilterStore((state) => state.searchText);
   const setSearchText = useFilterStore((state) => state.setSearchText);
   const addSearchFilters = useFilterStore((state) => state.addSearchFilters);
@@ -102,7 +103,7 @@ export function SearchBar() {
           {suggestions.map((suggestion, index) => (
             <button type="button" id={`${listboxId}-${index}`} role="option" aria-selected={activeIndex === index} className={activeIndex === index ? 'is-active' : ''} data-category={suggestion.category} key={suggestion.name} onMouseEnter={() => setActiveIndex(index)} onMouseDown={() => selectSuggestion(suggestion.name)}>
               <span>{suggestion.name.replaceAll('_', ' ')}</span>
-              <small>{suggestion.postCount.toLocaleString()}</small>
+               <small>{suggestion.postCount.toLocaleString(locale)}</small>
             </button>
           ))}
         </div>

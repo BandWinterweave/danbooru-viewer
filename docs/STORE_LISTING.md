@@ -10,7 +10,7 @@ Danbooru Viewer turns the browser's new tab into an image-first workspace for Da
 
 Search and combine tags without losing context. Switch between grid, masonry, and information-dense list layouts, inspect post metadata in a side panel, and open media in a full-screen viewer. Quick rating controls, reusable tags, local favorite groups, formatted tag copy, and single or batch downloads keep repeated workflows close at hand. New installations select only the General rating by default, and users can manually choose another rating.
 
-The extension stores preferences, local favorites, download history, and a 24-hour thumbnail cache on the device. It does not include analytics or telemetry. Optional source credentials remain in browser extension storage and are sent only to the selected Booru API.
+The extension stores preferences, local favorites, download history, and a 24-hour thumbnail cache on the device. It does not include analytics or telemetry. Optional source credentials remain on the device in browser extension storage, are not additionally encrypted, and are sent only to the corresponding Booru API when that source is used or tested.
 
 ### Highlights
 
@@ -25,7 +25,7 @@ The extension stores preferences, local favorites, download history, and a 24-ho
 
 ## Privacy disclosure
 
-Danbooru Viewer does not collect, sell, or transmit usage analytics. API requests go directly to the source selected by the user. Credentials and personal settings are stored locally through the browser extension storage API. Cached thumbnails and local favorites are stored in IndexedDB and can be removed by clearing extension data.
+Danbooru Viewer does not collect, sell, or transmit usage analytics. API requests go directly to the source selected by the user. Credentials and personal settings are stored on the device through the browser extension storage API; credentials receive no additional encryption and are sent only to their corresponding source. Cached thumbnails and local favorites are stored in IndexedDB and can be removed by clearing extension data.
 
 ## Screenshot checklist
 

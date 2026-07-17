@@ -52,11 +52,14 @@ export interface ApiProxyCancelRequest {
   payload: { requestId: string };
 }
 
+export type ApiProxyFailureReason = 'timeout' | 'cancelled' | 'network' | 'invalid' | 'http';
+
 export interface ApiProxyResponse<T = unknown> {
   ok: boolean;
   status: number;
   data?: T;
   error?: string;
+  reason?: ApiProxyFailureReason;
 }
 
 export interface BooruAdapter {

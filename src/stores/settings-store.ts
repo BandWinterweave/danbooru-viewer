@@ -7,13 +7,17 @@ import type { Credentials } from '../types/api';
 export type Theme = 'light' | 'dark' | 'system';
 export type Layout = 'grid' | 'masonry' | 'list';
 export type DetailImageQuality = 'preview' | 'sample' | 'original';
+export type ThumbnailQuality = 'preview' | 'sample';
+export type Language = 'system' | 'en' | 'zh-CN';
 
 interface SettingsStore {
   activeSource: BooruSource;
   theme: Theme;
+  language: Language;
   columns: number;
   layout: Layout;
   detailImageQuality: DetailImageQuality;
+  thumbnailQuality: ThumbnailQuality;
   keyboardEnabled: boolean;
   downloadRule: string;
   quickTags: string[];
@@ -22,11 +26,14 @@ interface SettingsStore {
   copyTagsEscapeParentheses: boolean;
   hideUnavailablePreviews: boolean;
   credentials: Partial<Record<BooruSource, Credentials>>;
+  credentialRevisions: Partial<Record<BooruSource, number>>;
   setActiveSource: (source: BooruSource) => void;
   setTheme: (theme: Theme) => void;
+  setLanguage: (language: Language) => void;
   setColumns: (columns: number) => void;
   setLayout: (layout: Layout) => void;
   setDetailImageQuality: (quality: DetailImageQuality) => void;
+  setThumbnailQuality: (quality: ThumbnailQuality) => void;
   setKeyboardEnabled: (enabled: boolean) => void;
   setDownloadRule: (rule: string) => void;
   addQuickTag: (tag: string) => void;
@@ -42,9 +49,11 @@ export const useSettingsStore = create<SettingsStore>()(persist(
   (set) => ({
     activeSource: 'danbooru',
     theme: 'system',
+    language: 'system',
     columns: 5,
     layout: 'grid',
     detailImageQuality: 'sample',
+    thumbnailQuality: 'preview',
     keyboardEnabled: true,
     downloadRule: '{source}-{id}-{artist}',
     quickTags: [],
@@ -53,11 +62,14 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     copyTagsEscapeParentheses: false,
     hideUnavailablePreviews: false,
     credentials: {},
+    credentialRevisions: {},
     setActiveSource: (activeSource) => set({ activeSource }),
     setTheme: (theme) => set({ theme }),
+    setLanguage: (language) => set({ language }),
     setColumns: (columns) => set({ columns: Math.min(Math.max(columns, 2), 8) }),
     setLayout: (layout) => set({ layout }),
     setDetailImageQuality: (detailImageQuality) => set({ detailImageQuality }),
+    setThumbnailQuality: (thumbnailQuality) => set({ thumbnailQuality }),
     setKeyboardEnabled: (keyboardEnabled) => set({ keyboardEnabled }),
     setDownloadRule: (downloadRule) => set({ downloadRule: downloadRule.trim() || '{source}-{id}' }),
     addQuickTag: (rawTag) => set((state) => { const tag = rawTag.trim().replace(/\s+/g, '_'); return !tag || state.quickTags.includes(tag) ? {} : { quickTags: [...state.quickTags, tag] }; }),
@@ -66,12 +78,15 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setCopyTagsUseUnderscores: (copyTagsUseUnderscores) => set({ copyTagsUseUnderscores }),
     setCopyTagsEscapeParentheses: (copyTagsEscapeParentheses) => set({ copyTagsEscapeParentheses }),
     setHideUnavailablePreviews: (hideUnavailablePreviews) => set({ hideUnavailablePreviews }),
-    setCredentials: (source, username, apiKey) => set((state) => ({ credentials: { ...state.credentials, [source]: { username: username.trim(), apiKey: apiKey.trim() } } })),
+    setCredentials: (source, username, apiKey) => set((state) => ({
+      credentials: { ...state.credentials, [source]: { username: username.trim(), apiKey: apiKey.trim() } },
+      credentialRevisions: { ...state.credentialRevisions, [source]: (state.credentialRevisions[source] ?? 0) + 1 },
+    })),
   }),
   {
     name: 'danbooru-settings',
     storage: createJSONStorage(() => extensionStorage),
-    version: 1,
+    version: 2,
     migrate: (persistedState) => {
       if (!persistedState || typeof persistedState !== 'object') return persistedState as SettingsStore;
       const state = { ...persistedState as Record<string, unknown> };

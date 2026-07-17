@@ -43,5 +43,15 @@ export const en = {
   domainActions: actionMessages,
 } as const;
 
+type WidenLocale<T> = T extends (...args: infer Args) => string
+  ? (...args: Args) => string
+  : T extends string
+    ? string
+    : T extends object
+      ? { readonly [Key in keyof T]: WidenLocale<T[Key]> }
+      : T;
+
+export type LocaleMessages = WidenLocale<typeof en>;
+
 export const messages = en;
 export { actionMessages, postMessages, shellMessages };

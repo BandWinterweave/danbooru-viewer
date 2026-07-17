@@ -1,5 +1,6 @@
-import type { ApiProxyCancelRequest, ApiProxyRequest, ApiProxyResponse, Credentials } from '../../types/api';
+import type { ApiProxyCancelRequest, ApiProxyFailureReason, ApiProxyRequest, ApiProxyResponse, Credentials } from '../../types/api';
 import ky from 'ky';
+import { getMessages } from '../../i18n/runtime-core';
 
 export function authHeaders(credentials?: Credentials): Record<string, string> {
   if (!credentials?.username || !credentials.apiKey) return {};
@@ -7,7 +8,7 @@ export function authHeaders(credentials?: Credentials): Record<string, string> {
 }
 
 export class ApiRequestError extends Error {
-  constructor(message: string, readonly status: number) { super(message); }
+  constructor(message: string, readonly status: number, readonly reason?: ApiProxyFailureReason) { super(message); }
 }
 
 const developmentProxy: Record<string, string> = {
@@ -62,7 +63,7 @@ async function performRequest<T>(url: URL, method: 'GET' | 'POST' | 'DELETE', he
         signal.removeEventListener('abort', abort);
         const cancel: ApiProxyCancelRequest = { type: 'API_CANCEL', payload: { requestId } };
         void chrome.runtime.sendMessage(cancel).catch(() => undefined);
-        reject(new DOMException('Search request cancelled', 'AbortError'));
+        reject(new DOMException(getMessages().domainActions.network.searchCancelled, 'AbortError'));
       };
       signal.addEventListener('abort', abort, { once: true });
       void responsePromise.then(
@@ -80,16 +81,23 @@ async function performRequest<T>(url: URL, method: 'GET' | 'POST' | 'DELETE', he
       || false;
     const direct = await ky(requestUrl, { method, headers, body, signal, cache: randomQuery ? 'no-store' : 'default', throwHttpErrors: false, retry: { limit: method === 'GET' ? 2 : 0 }, timeout: 15_000 });
     const responseText = direct.ok && direct.status !== 204 ? await direct.text() : '';
-    response = {
-      ok: direct.ok,
-      status: direct.status,
-      data: direct.ok ? (direct.status === 204 ? null as T : direct.headers.get('content-type')?.includes('json') ? (responseText.trim() ? JSON.parse(responseText) as T : [] as T) : responseText as T) : undefined,
-      error: direct.ok ? undefined : responseText,
-    };
+    try {
+      response = {
+        ok: direct.ok,
+        status: direct.status,
+        data: direct.ok ? (direct.status === 204 ? null as T : direct.headers.get('content-type')?.includes('json') ? (responseText.trim() ? JSON.parse(responseText) as T : [] as T) : responseText as T) : undefined,
+        error: direct.ok ? undefined : getMessages().domainActions.network.requestFailed(direct.status, ''),
+        reason: direct.ok ? undefined : 'http',
+      };
+    } catch {
+      response = { ok: false, status: direct.status, reason: 'invalid', error: getMessages().domainActions.network.invalidResponse(url.hostname) };
+    }
   }
 
   if (!response.ok || response.data === undefined) {
-    throw new ApiRequestError(response.error || `Booru request failed (${response.status})`, response.status);
+    const network = getMessages().domainActions.network;
+    const message = response.error || network.booruRequestFailed(response.status);
+    throw new ApiRequestError(message, response.status, response.reason ?? (response.status === 0 ? 'network' : 'http'));
   }
   return response.data;
 }

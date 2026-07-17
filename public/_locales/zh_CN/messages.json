@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Danbooru Viewer",
+    "description": "扩展名称"
+  },
+  "extensionDescription": {
+    "message": "一个专注的新标签页工作区，用于跨 Booru 图源浏览、筛选、保存和下载帖子。",
+    "description": "扩展商店摘要"
+  },
+  "actionTitle": {
+    "message": "打开 Danbooru Viewer",
+    "description": "浏览器工具栏操作标题"
+  }
+}

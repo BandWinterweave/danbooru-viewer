@@ -4,6 +4,7 @@ export const postMessages = {
     includeTag: (tag: string) => `Include ${tag}`,
     excludeTag: (tag: string) => `Exclude ${tag}`,
     postAlt: (source: string, id: number) => `${source} post ${id}`,
+    requestFailed: 'Request failed',
   },
   card: {
     score: 'score',
@@ -60,10 +61,19 @@ export const postMessages = {
       if (hours < 24) return `${hours} hours ago`;
       const days = Math.floor(hours / 24);
       if (days < 30) return `${days} days ago`;
-      return new Date(value).toLocaleDateString();
+      return new Date(value).toLocaleDateString('en');
     },
     voteSummary: (up: number, down: number) => `${up} up · ${down} down`,
     duration: (seconds: number) => `${seconds.toFixed(1)} seconds`,
+    previousPost: 'Previous post',
+    nextPost: 'Next post',
+    relatedRequestsFailed: (count: number) => `${count} related request${count === 1 ? '' : 's'} failed`,
+    statuses: {
+      active: 'Active',
+      pending: 'Pending',
+      flagged: 'Flagged',
+      deleted: 'Deleted',
+    },
     information: 'Information',
     id: 'ID',
     date: 'Date',
@@ -75,6 +85,12 @@ export const postMessages = {
     status: 'Status',
     durationLabel: 'Duration',
     actionFailed: 'Action failed',
+    copyTag: (tag: string) => `Copy ${tag}`,
+    tagCopied: 'Tag copied',
+    tagCopyFailed: 'Could not copy tag',
+    tagCopyDisabled: 'Tag was not copied',
+    tagCategoryDisabled: (category: string) => `${category} tag copying is disabled in Settings.`,
+    clipboardPermissionDenied: 'Allow clipboard access and try again.',
     closeDetails: 'Close details',
     postRecord: 'POST RECORD',
     savedLocally: 'Saved locally',

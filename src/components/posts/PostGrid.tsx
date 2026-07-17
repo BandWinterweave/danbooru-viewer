@@ -6,10 +6,11 @@ import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { PostCard } from './PostCard';
 import { StatePanel } from '../feedback/StatePanel';
-import { messages } from '../../i18n/en';
+import { useI18n } from '../../i18n/runtime';
 import { hasAvailablePreview } from '../../services/post-media';
 
 export function PostGrid() {
+  const { messages } = useI18n();
   const posts = usePostStore((state) => state.posts);
   const isLoading = usePostStore((state) => state.isLoading);
   const isLoadingMore = usePostStore((state) => state.isLoadingMore);

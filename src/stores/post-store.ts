@@ -5,7 +5,7 @@ import type { BooruAdapter, Credentials, SearchQuery } from '../types/api';
 import type { BooruSource, UnifiedPost } from '../types/post';
 import { useSettingsStore } from './settings-store';
 import { extensionStorage } from './storage';
-import { messages } from '../i18n/en';
+import { getMessages } from '../i18n/runtime-core';
 import { notify } from '../services/notifications';
 import { ApiRequestError } from '../services/api/client';
 import { enrichPostTags } from '../services/booru-adapters/tag-enrichment';
@@ -111,10 +111,12 @@ export const usePostStore = create<PostStore>()(persist(
         if (!isCurrentSession(session)) return;
         session.page = result.page;
         set({ posts: result.items, page: result.page, hasMore: result.hasMore, paginationStopReason: result.paginationStopReason, isLoading: false, loadingPhase: 'idle' });
+        const messages = getMessages();
         if (recovering) notify({ tone: 'success', title: messages.toast.restored, description: messages.toast.restoredBody });
       } catch (error) {
         if (!isCurrentSession(session) || isAbortError(error)) return;
-        const detail = error instanceof Error ? error.message : 'Search failed';
+        const messages = getMessages();
+        const detail = error instanceof Error ? error.message : messages.domainActions.network.searchFailed;
         set({ isLoading: false, loadingPhase: 'idle', failedOperation: 'search', error: detail });
         const limited = error instanceof ApiRequestError && error.status === 429;
         notify({ tone: limited ? 'warning' : 'error', title: limited ? messages.toast.rateLimited : messages.toast.searchFailed, description: limited ? messages.toast.rateLimitedBody : messages.toast.networkBody });
@@ -140,7 +142,7 @@ export const usePostStore = create<PostStore>()(persist(
             paginationStopReason: result.paginationStopReason,
           }));
         } catch (error) {
-          if (isCurrentSession(session) && !isAbortError(error)) set({ failedOperation: 'append', error: error instanceof Error ? error.message : 'Could not load more posts' });
+          if (isCurrentSession(session) && !isAbortError(error)) set({ failedOperation: 'append', error: error instanceof Error ? error.message : getMessages().domainActions.network.loadMoreFailed });
         } finally {
           if (isCurrentSession(session)) set({ isLoadingMore: false, loadingPhase: 'idle' });
           session.loadMorePromise = null;

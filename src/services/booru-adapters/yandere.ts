@@ -5,6 +5,7 @@ import { buildSourceTags } from './query-tags';
 import { isOnOrAfter } from './date-filter';
 import { rememberTagCategory, tagCategoryFor, tagCategoryFromType } from './tag-categories';
 import { safeHttpUrl } from '../safe-url';
+import { getMessages } from '../../i18n/runtime-core';
 
 interface YanderePost { id: number; tags: string; rating: string; score: number; author?: string; source?: string; file_url?: string; preview_url?: string; sample_url?: string; width?: number; height?: number; file_size?: number; md5?: string; created_at?: number; parent_id?: number | null; has_children?: boolean; }
 export const normalizeYanderePost = (raw: YanderePost): UnifiedPost => {
@@ -15,6 +16,6 @@ export const normalizeYanderePost = (raw: YanderePost): UnifiedPost => {
 export const yandereAdapter: BooruAdapter = {
   id: 'yandere', name: 'Yande.re', baseUrl: 'https://yande.re', supportsAuth: true, supportsWrites: false,
   async searchPosts(query: SearchQuery, credentials, signal): Promise<PaginatedResult<UnifiedPost>> { const limit = Math.min(query.limit ?? 40, 100); const page = Math.max(query.page ?? 1, 1); const url = new URL('/post.json', this.baseUrl); url.searchParams.set('limit', String(limit)); url.searchParams.set('page', String(page)); const terms = buildSourceTags('yandere', query); if (terms) url.searchParams.set('tags', terms); const posts = await apiGet<YanderePost[]>(url, credentials, signal); const items = posts.map(normalizeYanderePost).filter((post) => isOnOrAfter(post.createdAt, query.dateAfter)); return { items, page, limit, hasMore: posts.length === limit }; },
-  async getPost(id: number, credentials, signal) { const result = await this.searchPosts({ tags: `id:${id}`, limit: 1 }, credentials, signal); if (!result.items[0]) throw new Error(`Yande.re post ${id} was not found`); return result.items[0]; },
+  async getPost(id: number, credentials, signal) { const result = await this.searchPosts({ tags: `id:${id}`, limit: 1 }, credentials, signal); if (!result.items[0]) throw new Error(getMessages().domainActions.network.postNotFound('Yande.re', id)); return result.items[0]; },
   async autocomplete(query: string): Promise<TagAutocompleteResult[]> { if (query.trim().length < 2) return []; const url = new URL('/tag.json', this.baseUrl); url.searchParams.set('name', `${query.trim()}*`); url.searchParams.set('limit', '8'); const tags = await apiGet<Array<{ name: string; count: number; type: number }>>(url); return tags.map((tag) => ({ name: tag.name, label: tag.name, postCount: tag.count, category: tagCategoryFromType(tag.type) })).map((item) => { rememberTagCategory('yandere', item.name, item.category); return item; }); },
 };

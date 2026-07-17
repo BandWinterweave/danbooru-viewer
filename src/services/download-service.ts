@@ -1,5 +1,5 @@
 import { createStore, get, set } from 'idb-keyval';
-import { actionMessages } from '../i18n/en-actions';
+import { getMessages } from '../i18n/runtime-core';
 import type { UnifiedPost } from '../types/post';
 import { displayImageUrl } from './api/image-url';
 import { safeHttpUrl } from './safe-url';
@@ -54,6 +54,7 @@ async function recordDownload(post: UnifiedPost) {
 }
 
 export async function downloadPost(post: UnifiedPost, size: DownloadSize = 'full', rule = '{source}-{id}-{artist}'): Promise<void> {
+  const actionMessages = getMessages().domainActions;
   const url = resolveDownloadUrl(post, size);
   if (!url) throw new Error(actionMessages.download.unavailable);
   const filename = buildDownloadFilename(post, rule, size);

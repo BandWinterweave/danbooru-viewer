@@ -18,6 +18,13 @@ test('mobile workspace remains usable and free of horizontal overflow', async ({
   await expect(sidebar).toBeHidden();
 
   await page.getByRole('button', { name: 'Open sidebar' }).click();
+  await sidebar.getByRole('button', { name: /Favorite library/ }).click();
+  await expect(page.getByRole('heading', { name: 'Favorite library' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open sidebar' }).click();
+  await sidebar.getByRole('button', { name: /Discover/ }).click();
+  await expect(page.getByRole('search')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Open sidebar' }).click();
   await page.locator('.sidebar-scrim').click({ position: { x: 400, y: 400 } });
   await expect(sidebar).toBeHidden();
 

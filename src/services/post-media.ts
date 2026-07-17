@@ -1,4 +1,5 @@
 import type { UnifiedPost } from '../types/post';
+import type { ThumbnailQuality } from '../stores/settings-store';
 
 const videoExtensions = new Set(['mp4', 'webm', 'm4v', 'ogv']);
 
@@ -26,7 +27,11 @@ export function postPageUrl(post: UnifiedPost) {
 }
 
 export function previewMediaUrl(post: UnifiedPost) {
-  return isVideoPost(post) ? post.playbackUrl || post.fileUrl : post.sampleUrl || post.previewUrl || post.fileUrl;
+  return isVideoPost(post) ? post.playbackUrl || post.fileUrl : post.previewUrl || post.sampleUrl;
+}
+
+export function thumbnailImageUrl(post: UnifiedPost, quality: ThumbnailQuality) {
+  return quality === 'sample' ? post.sampleUrl || post.previewUrl : post.previewUrl || post.sampleUrl;
 }
 
 export function hasAvailablePreview(post: UnifiedPost) {

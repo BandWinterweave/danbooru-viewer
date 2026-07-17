@@ -22,6 +22,7 @@ export function useKeyboard() {
       const ui = useUiStore.getState();
       const postState = usePostStore.getState();
       const current = ui.currentPost;
+      const actionTarget = ui.detailOpen ? current : ui.hoveredPost;
       if (event.ctrlKey && key === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('#main-search')?.focus(); return; }
       if (event.ctrlKey && key === 'a') { event.preventDefault(); postState.selectAll(); return; }
       if (event.ctrlKey && key === 'd') {
@@ -37,9 +38,10 @@ export function useKeyboard() {
         else useFilterStore.getState().clearAll();
         return;
       }
-      if (key === 'f' && current) { runAsync('storage', useFavoriteStore.getState().toggleLocal(current)); return; }
-      if (key === 'd' && current && ui.detailOpen) { runAsync('download', downloadPost(current, current.fileExt === 'zip' && current.playbackUrl ? 'playback' : 'full', settings.downloadRule)); return; }
-      if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen) {
+      if ((key === 'f' || key === 'd') && event.repeat) return;
+      if (key === 'f' && actionTarget) { event.preventDefault(); runAsync('storage', useFavoriteStore.getState().toggleLocal(actionTarget)); return; }
+      if (key === 'd' && actionTarget) { event.preventDefault(); runAsync('download', downloadPost(actionTarget, actionTarget.fileExt === 'zip' && actionTarget.playbackUrl ? 'playback' : 'full', settings.downloadRule)); return; }
+      if ((key === 'arrowleft' || key === 'arrowright') && current && ui.detailOpen && ui.detailContext === 'browse') {
         event.preventDefault();
         if (!event.repeat && current) void postState.navigateDetail(current, key === 'arrowright' ? 1 : -1).then((next) => { if (next) useUiStore.getState().setCurrentPost(next); });
         return;

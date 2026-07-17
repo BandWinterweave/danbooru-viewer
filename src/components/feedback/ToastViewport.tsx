@@ -1,11 +1,12 @@
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { messages } from '../../i18n/en';
+import { useI18n } from '../../i18n/runtime';
 import { TOAST_EVENT, type ToastMessage } from '../../services/notifications';
 
 const icons = { success: Check, error: AlertTriangle, warning: AlertTriangle, info: Info };
 
 export function ToastViewport() {
+  const { messages } = useI18n();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const dismiss = (id: string) => setToasts((items) => items.filter((item) => item.id !== id));
 

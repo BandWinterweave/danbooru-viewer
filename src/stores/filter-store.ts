@@ -20,6 +20,9 @@ interface FilterStore {
   toggleRating: (rating: Rating) => void;
   setMetaFilter: (meta: Partial<MetaFilter>) => void;
   savePreset: (name: string, sourceId: string) => void;
+  renamePreset: (id: string, name: string) => void;
+  updatePreset: (id: string) => void;
+  movePreset: (id: string, direction: -1 | 1) => void;
   loadPreset: (id: string) => void;
   deletePreset: (id: string) => void;
   getSearchQuery: () => SearchQuery;
@@ -79,6 +82,27 @@ export const useFilterStore = create<FilterStore>()(persist(
     toggleRating: (rating) => set((state) => ({ ratings: state.ratings.includes(rating) ? [] : [rating] })),
     setMetaFilter: (meta) => set((state) => ({ meta: { ...state.meta, ...meta } })),
     savePreset: (name, sourceId) => set((state) => ({ presets: [...state.presets, { id: crypto.randomUUID(), name: name.trim(), sourceId, filters: state.activeFilters, ratings: state.ratings, meta: state.meta, createdAt: new Date().toISOString() }] })),
+    renamePreset: (id, rawName) => {
+      const name = rawName.trim();
+      if (!name) return;
+      set((state) => ({ presets: state.presets.map((preset) => preset.id === id ? { ...preset, name } : preset) }));
+    },
+    updatePreset: (id) => set((state) => ({
+      presets: state.presets.map((preset) => preset.id === id
+        ? { ...preset, filters: state.activeFilters, ratings: state.ratings, meta: state.meta }
+        : preset),
+    })),
+    movePreset: (id, direction) => set((state) => {
+      const index = state.presets.findIndex((preset) => preset.id === id);
+      if (index < 0) return {};
+      const sourceId = state.presets[index].sourceId;
+      let target = index + direction;
+      while (target >= 0 && target < state.presets.length && state.presets[target].sourceId !== sourceId) target += direction;
+      if (target < 0 || target >= state.presets.length) return {};
+      const presets = [...state.presets];
+      [presets[index], presets[target]] = [presets[target], presets[index]];
+      return { presets };
+    }),
     loadPreset: (id) => set((state) => { const preset = state.presets.find((item) => item.id === id); return preset ? { activeFilters: preset.filters, ratings: preset.ratings, meta: preset.meta } : {}; }),
     deletePreset: (id) => set((state) => ({ presets: state.presets.filter((item) => item.id !== id) })),
     getSearchQuery: () => {

@@ -8,6 +8,7 @@ const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), '
 const manifestSchema = JSON.parse(await readFile(path.join(root, 'scripts', 'manifest.schema.json'), 'utf8'));
 const validateManifest = new Ajv({ allErrors: true, strict: false }).compile(manifestSchema);
 const builds = ['dist', 'dist-firefox'];
+const requiredLocales = ['en', 'zh_CN'];
 const allowedPermissions = new Set([
   'storage',
   'downloads',
@@ -48,6 +49,14 @@ for (const build of builds) {
     throw new Error('Firefox build must use background.scripts');
   if (build === 'dist' && !manifest.background?.service_worker)
     throw new Error('Chromium build must use a service worker');
+
+  const messageKeys = [...JSON.stringify(manifest).matchAll(/__MSG_([A-Za-z0-9_]+)__/g)].map((match) => match[1]);
+  for (const locale of requiredLocales) {
+    const messages = JSON.parse(await readFile(path.join(directory, '_locales', locale, 'messages.json'), 'utf8'));
+    const missing = messageKeys.filter((key) => !messages[key] || typeof messages[key].message !== 'string');
+    if (missing.length)
+      throw new Error(`${build}: _locales/${locale} is missing manifest messages: ${missing.join(', ')}`);
+  }
 
   const files = await filesIn(directory);
   report.builds[build] = await Promise.all(

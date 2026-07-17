@@ -1,16 +1,16 @@
 import { ShieldAlert, ShieldCheck, ShieldQuestion, ShieldX } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import type { Rating } from '../../types/post';
-import { shellMessages } from '../../i18n/en-shell';
-
-const ratings: { value: Rating; label: string; shortLabel: string; icon: typeof ShieldCheck }[] = [
-  { value: 'g', label: shellMessages.rating.general, shortLabel: shellMessages.rating.general, icon: ShieldCheck },
-  { value: 's', label: shellMessages.rating.sensitive, shortLabel: shellMessages.rating.sensitive, icon: ShieldAlert },
-  { value: 'q', label: shellMessages.rating.questionable, shortLabel: shellMessages.rating.questionable, icon: ShieldQuestion },
-  { value: 'e', label: shellMessages.rating.explicit, shortLabel: shellMessages.rating.explicit, icon: ShieldX },
-];
+import { useI18n } from '../../i18n/runtime';
 
 export function RatingQuickToggle() {
+  const { messages: { shell: shellMessages } } = useI18n();
+  const ratings: { value: Rating; label: string; shortLabel: string; icon: typeof ShieldCheck }[] = [
+    { value: 'g', label: shellMessages.rating.general, shortLabel: shellMessages.rating.general, icon: ShieldCheck },
+    { value: 's', label: shellMessages.rating.sensitive, shortLabel: shellMessages.rating.sensitive, icon: ShieldAlert },
+    { value: 'q', label: shellMessages.rating.questionable, shortLabel: shellMessages.rating.questionable, icon: ShieldQuestion },
+    { value: 'e', label: shellMessages.rating.explicit, shortLabel: shellMessages.rating.explicit, icon: ShieldX },
+  ];
   const active = useFilterStore((state) => state.ratings);
   const toggle = useFilterStore((state) => state.toggleRating);
   return (

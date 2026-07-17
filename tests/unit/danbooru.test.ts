@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePost } from '../../src/services/booru-adapters/danbooru';
+import { normalizePost, normalizeRelatedTags } from '../../src/services/booru-adapters/danbooru';
 
 describe('Danbooru adapter', () => {
   it('normalizes raw post fields and categorized tags', () => {
@@ -50,5 +50,13 @@ describe('Danbooru adapter', () => {
     expect(post.fileUrl).toBe('https://cdn.example/frames.zip');
     expect(post.playbackUrl).toBe('https://cdn.example/ugoira.mp4');
     expect(post.duration).toBe(2.5);
+  });
+
+  it('normalizes legacy and current related-tag responses and filters malformed records', () => {
+    expect(normalizeRelatedTags({ related_tags: [['blue_sky', 0], ['bad'], [4, 1], ['nan', Number.NaN]] }))
+      .toEqual([{ name: 'blue_sky', category: 0 }]);
+    expect(normalizeRelatedTags({ tags: [{ name: 'artist_name', category: 1 }, null, { name: '', category: 0 }, { name: 'bad' }] }))
+      .toEqual([{ name: 'artist_name', category: 1 }]);
+    expect(normalizeRelatedTags(Array.from({ length: 15 }, (_, index) => ({ name: `tag_${index}`, category: 0 })))).toHaveLength(12);
   });
 });

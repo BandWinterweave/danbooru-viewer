@@ -4,10 +4,11 @@ import { ExternalLink, Search } from 'lucide-react';
 import '../styles.css';
 import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
-import { shellMessages } from '../i18n/en-shell';
+import { I18nProvider, useI18n } from '../i18n/runtime';
 
 function Popup() {
   useTheme();
+  const { messages: { shell: shellMessages } } = useI18n();
   const openViewer = () => chrome.tabs.create({ url: chrome.runtime.getURL('src/newtab/index.html') });
   return (
     <main className="popup-shell">
@@ -18,4 +19,4 @@ function Popup() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><ErrorBoundary><Popup /></ErrorBoundary></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><I18nProvider page="popup"><ErrorBoundary><Popup /></ErrorBoundary></I18nProvider></React.StrictMode>);
