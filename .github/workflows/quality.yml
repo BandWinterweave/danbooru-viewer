@@ -37,7 +37,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium firefox
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -57,7 +57,7 @@ jobs:
       - run: npm ci
       - run: npm run verify:reproducible
       - run: npm run validate:artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: unsigned-extension-builds
           path: |
