@@ -5,7 +5,7 @@ import { useSettingsStore } from '../stores/settings-store';
 export const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000;
 export const IMAGE_CACHE_MAX_BYTES = 512 * 1024 * 1024;
 export const IMAGE_CACHE_MAX_ITEM_BYTES = 8 * 1024 * 1024;
-const MAX_ENTRIES = 5000;
+const MAX_ENTRIES = 500;
 const imageStore = createStore('danbooru-viewer-media', 'thumbnails');
 
 interface CachedImage { blob: Blob; size: number; expiresAt: number; accessedAt: number }
@@ -44,7 +44,7 @@ async function initializeIndex() {
   await indexPromise;
 }
 
-async function pruneIndex() {
+function pruneIndexMemory() {
   const now = Date.now();
   const maxBytes = useSettingsStore.getState().imageCacheLimitBytes ?? IMAGE_CACHE_MAX_BYTES;
   const ordered = [...index.entries()].sort((left, right) => right[1].accessedAt - left[1].accessedAt);
@@ -55,7 +55,12 @@ async function pruneIndex() {
     if (metadata.expiresAt <= now || kept >= MAX_ENTRIES || bytes + metadata.size > maxBytes) removals.push(key);
     else { bytes += metadata.size; kept += 1; }
   }
-  await Promise.all(removals.map(async (key) => { index.delete(key); revoke(key); await del(key, imageStore); }));
+  removals.forEach((key) => { index.delete(key); revoke(key); });
+  return removals;
+}
+
+async function pruneIndex() {
+  await Promise.all(pruneIndexMemory().map((key) => del(key, imageStore)));
 }
 
 function objectUrl(url: string, blob: Blob, expiresAt: number) {
@@ -79,7 +84,11 @@ async function resolveImageUrl(rawUrl: string): Promise<string> {
     if (cached && cached.expiresAt > Date.now()) {
       const accessedAt = Date.now();
       index.set(url, { size: cached.size ?? cached.blob.size, expiresAt: cached.expiresAt, accessedAt });
-      void set(url, { ...cached, accessedAt }, imageStore).catch(() => undefined);
+      const removals = pruneIndexMemory();
+      writeQueue = writeQueue.then(async () => {
+        await Promise.all(removals.map((key) => del(key, imageStore)));
+        if (index.has(url)) await set(url, { ...cached, accessedAt }, imageStore);
+      }).catch(() => undefined);
       return objectUrl(url, cached.blob, cached.expiresAt);
     }
     if (cached) { index.delete(url); await del(url, imageStore); }
@@ -89,9 +98,10 @@ async function resolveImageUrl(rawUrl: string): Promise<string> {
     if (blob.size > IMAGE_CACHE_MAX_ITEM_BYTES) return url;
     const value: CachedImage = { blob, size: blob.size, expiresAt: Date.now() + IMAGE_CACHE_TTL, accessedAt: Date.now() };
     index.set(url, { size: value.size, expiresAt: value.expiresAt, accessedAt: value.accessedAt });
+    const removals = pruneIndexMemory();
     writeQueue = writeQueue.then(async () => {
-      await set(url, value, imageStore);
-      await pruneIndex();
+      await Promise.all(removals.map((key) => del(key, imageStore)));
+      if (index.has(url)) await set(url, value, imageStore);
     }).catch(() => undefined);
     return objectUrl(url, blob, value.expiresAt);
   } catch {
@@ -130,7 +140,8 @@ export function imageCacheDiagnostics() {
 
 useSettingsStore.subscribe((state, previousState) => {
   if (state.imageCacheLimitBytes === previousState.imageCacheLimitBytes || !indexPromise) return;
-  writeQueue = writeQueue.then(pruneIndex).catch(() => undefined);
+  const removals = pruneIndexMemory();
+  writeQueue = writeQueue.then(() => Promise.all(removals.map((key) => del(key, imageStore))).then(() => undefined)).catch(() => undefined);
 });
 
 if (import.meta.env.MODE === 'e2e' && typeof window !== 'undefined') {

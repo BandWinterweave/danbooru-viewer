@@ -85,7 +85,7 @@ describe('image cache bounds', () => {
 
     const diagnostics = cache.imageCacheDiagnostics();
     expect(entriesMock).toHaveBeenCalledTimes(1);
-    expect(diagnostics.entries).toBeLessThanOrEqual(5000);
+    expect(diagnostics.entries).toBeLessThanOrEqual(500);
     expect(diagnostics.bytes).toBeLessThanOrEqual(diagnostics.maxBytes);
   });
 
