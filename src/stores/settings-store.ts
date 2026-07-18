@@ -18,6 +18,7 @@ interface SettingsStore {
   layout: Layout;
   detailImageQuality: DetailImageQuality;
   thumbnailQuality: ThumbnailQuality;
+  imageCacheLimitBytes: number;
   keyboardEnabled: boolean;
   downloadRule: string;
   quickTags: string[];
@@ -39,6 +40,7 @@ interface SettingsStore {
   setLayout: (layout: Layout) => void;
   setDetailImageQuality: (quality: DetailImageQuality) => void;
   setThumbnailQuality: (quality: ThumbnailQuality) => void;
+  setImageCacheLimitBytes: (value: number) => void;
   setKeyboardEnabled: (enabled: boolean) => void;
   setDownloadRule: (rule: string) => void;
   addQuickTag: (tag: string) => void;
@@ -64,6 +66,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     layout: 'grid',
     detailImageQuality: 'sample',
     thumbnailQuality: 'preview',
+    imageCacheLimitBytes: 512 * 1024 ** 2,
     keyboardEnabled: true,
     downloadRule: '{source}-{id}-{artist}',
     quickTags: [],
@@ -85,6 +88,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setLayout: (layout) => set({ layout }),
     setDetailImageQuality: (detailImageQuality) => set({ detailImageQuality }),
     setThumbnailQuality: (thumbnailQuality) => set({ thumbnailQuality }),
+    setImageCacheLimitBytes: (imageCacheLimitBytes) => set({ imageCacheLimitBytes: Math.min(10 * 1024 ** 3, Math.max(64 * 1024 ** 2, Math.round(imageCacheLimitBytes) || 512 * 1024 ** 2)) }),
     setKeyboardEnabled: (keyboardEnabled) => set({ keyboardEnabled }),
     setDownloadRule: (downloadRule) => set({ downloadRule: downloadRule.trim() || '{source}-{id}' }),
     addQuickTag: (rawTag) => set((state) => { const tag = rawTag.trim().replace(/\s+/g, '_'); return !tag || state.quickTags.includes(tag) ? {} : { quickTags: [...state.quickTags, tag] }; }),
@@ -106,7 +110,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
   {
     name: 'danbooru-settings',
     storage: createJSONStorage(() => extensionStorage),
-    version: 3,
+    version: 4,
     migrate: (persistedState) => {
       if (!persistedState || typeof persistedState !== 'object') return persistedState as SettingsStore;
       const state = { ...persistedState as Record<string, unknown> };

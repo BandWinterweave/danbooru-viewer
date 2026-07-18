@@ -1,10 +1,11 @@
 import { createStore, del, entries, get, set } from 'idb-keyval';
 import { safeHttpUrl } from './safe-url';
+import { useSettingsStore } from '../stores/settings-store';
 
 export const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000;
-export const IMAGE_CACHE_MAX_BYTES = 96 * 1024 * 1024;
+export const IMAGE_CACHE_MAX_BYTES = 512 * 1024 * 1024;
 export const IMAGE_CACHE_MAX_ITEM_BYTES = 8 * 1024 * 1024;
-const MAX_ENTRIES = 500;
+const MAX_ENTRIES = 5000;
 const imageStore = createStore('danbooru-viewer-media', 'thumbnails');
 
 interface CachedImage { blob: Blob; size: number; expiresAt: number; accessedAt: number }
@@ -45,12 +46,13 @@ async function initializeIndex() {
 
 async function pruneIndex() {
   const now = Date.now();
+  const maxBytes = useSettingsStore.getState().imageCacheLimitBytes ?? IMAGE_CACHE_MAX_BYTES;
   const ordered = [...index.entries()].sort((left, right) => right[1].accessedAt - left[1].accessedAt);
   let bytes = 0;
   let kept = 0;
   const removals: string[] = [];
   for (const [key, metadata] of ordered) {
-    if (metadata.expiresAt <= now || kept >= MAX_ENTRIES || bytes + metadata.size > IMAGE_CACHE_MAX_BYTES) removals.push(key);
+    if (metadata.expiresAt <= now || kept >= MAX_ENTRIES || bytes + metadata.size > maxBytes) removals.push(key);
     else { bytes += metadata.size; kept += 1; }
   }
   await Promise.all(removals.map(async (key) => { index.delete(key); revoke(key); await del(key, imageStore); }));
@@ -123,8 +125,14 @@ export function imageCacheDiagnostics() {
     entries: index.size,
     bytes: [...index.values()].reduce((total, item) => total + item.size, 0),
     objectUrls: objectUrls.size,
+    maxBytes: useSettingsStore.getState().imageCacheLimitBytes ?? IMAGE_CACHE_MAX_BYTES,
   };
 }
+
+useSettingsStore.subscribe((state, previousState) => {
+  if (state.imageCacheLimitBytes === previousState.imageCacheLimitBytes || !indexPromise) return;
+  writeQueue = writeQueue.then(pruneIndex).catch(() => undefined);
+});
 
 if (import.meta.env.MODE === 'e2e' && typeof window !== 'undefined') {
   (window as Window & { __danbooruImageCacheDiagnostics?: typeof imageCacheDiagnostics }).__danbooruImageCacheDiagnostics = imageCacheDiagnostics;

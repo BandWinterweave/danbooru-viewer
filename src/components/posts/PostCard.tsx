@@ -81,10 +81,6 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const leaveCard = () => { clearHoveredPost(post); scheduleClose(); };
   const copySingleTag = async (tag: UnifiedPost['tags'][number]) => {
     const text = formatTagForCopy(tag, copyOptions);
-    if (!text) {
-      notify({ tone: 'warning', title: postMessages.detail.tagCopyDisabled, description: postMessages.detail.tagCategoryDisabled(postMessages.detail.categories[tag.category]) });
-      return;
-    }
     try {
       await navigator.clipboard.writeText(text);
       notify({ tone: 'success', title: postMessages.detail.tagCopied, description: text });
@@ -151,6 +147,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
       <button className={`post-copy ${copied ? 'is-copied' : ''}`} title={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} aria-label={copied ? postMessages.card.tagsCopied : postMessages.card.copyFormattedTags} onClick={copyTags}>{copied ? <ClipboardCheck size={13} /> : <Copy size={13} />}</button>
       <button className="post-comfy" title="Send to ComfyUI" aria-label="Send to ComfyUI" onClick={(event) => { event.stopPropagation(); void sendPostsToComfy([post]); }}><Sparkles size={13} /></button>
       {downloaded && <span className="downloaded-badge" title={postMessages.card.previouslyDownloaded}><CircleCheck size={12} /> {postMessages.card.downloaded}</span>}
+      {isLocal && <span className="local-favorite-badge" title={postMessages.card.removeFromLocalFavorites}><Heart size={13} fill="currentColor" /></span>}
       <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.length ? tags.map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) : postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader === 'unknown' ? postMessages.common.unknown : post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{postMessages.detail.statuses[post.status ?? 'active']}</dd></div></dl></div>}
       <span className={`rating-badge rating-badge--${post.rating}`} title={postMessages.card.rating(post.rating)}>{post.rating}</span>

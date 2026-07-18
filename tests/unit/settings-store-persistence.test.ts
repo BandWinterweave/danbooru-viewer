@@ -31,6 +31,14 @@ describe('settings store migration', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"thumbnailQuality":"sample"');
   });
 
+  it('persists and clamps the browsing image cache limit', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setImageCacheLimitBytes(768 * 1024 ** 2);
+    expect(store.getState().imageCacheLimitBytes).toBe(768 * 1024 ** 2);
+    store.getState().setImageCacheLimitBytes(1);
+    expect(store.getState().imageCacheLimitBytes).toBe(64 * 1024 ** 2);
+  });
+
   it('clamps grid and masonry columns to the 2-12 range', async () => {
     const store = await loadSettingsStore();
     store.getState().setColumns(99);

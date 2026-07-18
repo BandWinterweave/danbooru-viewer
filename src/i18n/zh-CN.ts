@@ -147,6 +147,7 @@ export const zhCN = {
       defaultColumns: '默认列数',
       thumbnailQuality: '缩略图质量',
       detailImageQuality: '大图分辨率',
+      imageCacheLimit: '浏览图片缓存上限（MB）',
       previewQuality: '预览图（低带宽）',
       sampleQuality: '样图（推荐）',
       originalQuality: '原图（完整分辨率）',

@@ -70,7 +70,6 @@ export function PostDetail() {
   const credential = useSettingsStore((state) => state.credentials[post?.source ?? state.activeSource]);
   const credentialRevision = useSettingsStore((state) => state.credentialRevisions[post?.source ?? state.activeSource] ?? 0);
   const detailImageQuality = useSettingsStore((state) => state.detailImageQuality);
-  const copyTagCategories = useSettingsStore((state) => state.copyTagCategories);
   const copyTagsUseUnderscores = useSettingsStore((state) => state.copyTagsUseUnderscores);
   const copyTagsEscapeParentheses = useSettingsStore((state) => state.copyTagsEscapeParentheses);
   const isLocal = useFavoriteStore((state) => post ? state.isLocal(post) : false);
@@ -133,12 +132,8 @@ export function PostDetail() {
 
   const runAction = async (action: () => Promise<void>) => { setBusy(true); setActionError(''); try { await action(); } catch (error) { setActionError(error instanceof Error ? error.message : postMessages.detail.actionFailed); } finally { setBusy(false); } };
   const copyTag = async (tag: UnifiedPost['tags'][number]) => {
-    const options: TagCopyOptions = { categories: copyTagCategories, useUnderscores: copyTagsUseUnderscores, escapeParentheses: copyTagsEscapeParentheses };
+    const options: Pick<TagCopyOptions, 'useUnderscores' | 'escapeParentheses'> = { useUnderscores: copyTagsUseUnderscores, escapeParentheses: copyTagsEscapeParentheses };
     const text = formatTagForCopy(tag, options);
-    if (!text) {
-      notify({ tone: 'warning', title: postMessages.detail.tagCopyDisabled, description: postMessages.detail.tagCategoryDisabled(postMessages.detail.categories[tag.category]) });
-      return;
-    }
     try {
       await navigator.clipboard.writeText(text);
       notify({ tone: 'success', title: postMessages.detail.tagCopied, description: text });

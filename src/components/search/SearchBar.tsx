@@ -18,7 +18,7 @@ export function SearchBar() {
   const getSearchQuery = useFilterStore((state) => state.getSearchQuery);
   const searchPosts = usePostStore((state) => state.search);
   const activeSource = useSettingsStore((state) => state.activeSource);
-  const credentials = useSettingsStore((state) => state.credentials[state.activeSource]);
+  const credentials = useSettingsStore((state) => state.credentials.danbooru);
   const [suggestions, setSuggestions] = useState<TagAutocompleteResult[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -30,20 +30,20 @@ export function SearchBar() {
     if (lastTerm.length < 2) { setSuggestions([]); return; }
     let cancelled = false;
     const timeout = window.setTimeout(async () => {
-      const cached = await getCachedSuggestions(activeSource, lastTerm);
+      const cached = await getCachedSuggestions('danbooru', lastTerm);
       if (cancelled) return;
        if (cached?.items.length) {
-         await ensureCanonicalTagMetadata(activeSource, cached.items.map((item) => item.name)).catch(() => undefined);
-         setSuggestions(applyKnownSuggestionCategories(activeSource, cached.items)); setOpen(true); setActiveIndex(0);
+         await ensureCanonicalTagMetadata('danbooru', cached.items.map((item) => item.name)).catch(() => undefined);
+         setSuggestions(applyKnownSuggestionCategories('danbooru', cached.items)); setOpen(true); setActiveIndex(0);
        }
       if (cached && !cached.stale) return;
       try {
-        const result = await getBooruAdapter(activeSource).autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
-        await ensureCanonicalTagMetadata(activeSource, result.map((item) => item.name)).catch(() => undefined);
-        const categorized = applyKnownSuggestionCategories(activeSource, result);
+        const result = await getBooruAdapter('danbooru').autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await ensureCanonicalTagMetadata('danbooru', result.map((item) => item.name)).catch(() => undefined);
+        const categorized = applyKnownSuggestionCategories('danbooru', result);
         await Promise.all([
-          cacheSuggestions(activeSource, lastTerm, categorized),
-          rememberTagMetadata(activeSource, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
+          cacheSuggestions('danbooru', lastTerm, categorized),
+          rememberTagMetadata('danbooru', result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
         if (!cancelled) { setSuggestions(categorized); setOpen(true); setActiveIndex(categorized.length ? 0 : -1); }
       } catch {

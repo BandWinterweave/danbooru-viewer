@@ -36,15 +36,15 @@ describe('PostDetail tag copy', () => {
     useSettingsStore.setState({ copyTagCategories: ['artist', 'character', 'copyright', 'general', 'meta'], copyTagsUseUnderscores: true, copyTagsEscapeParentheses: false });
   });
 
-  it('does not write when the tag category is disabled and explains why', async () => {
+  it('copies one tag even when its category is disabled for multi-tag copy', async () => {
     useSettingsStore.setState({ copyTagCategories: ['artist'] });
+    writeText.mockResolvedValue(undefined);
     render(<><PostDetail /><ToastViewport /></>);
 
     fireEvent.click(screen.getByTitle('Copy blue_sky'));
 
-    expect(writeText).not.toHaveBeenCalled();
-    expect(await screen.findByText('Tag was not copied')).toBeInTheDocument();
-    expect(screen.getByText('General tag copying is disabled in Settings.')).toBeInTheDocument();
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('blue_sky'));
+    expect(await screen.findByText('Tag copied')).toBeInTheDocument();
   });
 
   it('copies the canonical tag name and shows a success toast', async () => {

@@ -35,7 +35,7 @@ export function Sidebar() {
   const quickTags = useSettingsStore((state) => state.quickTags);
   const addQuickTag = useSettingsStore((state) => state.addQuickTag);
   const removeQuickTag = useSettingsStore((state) => state.removeQuickTag);
-  const credentials = useSettingsStore((state) => state.credentials[state.activeSource]);
+  const credentials = useSettingsStore((state) => state.credentials.danbooru);
   const favorites = useFavoriteStore((state) => state.favorites);
   const favoritesHydrated = useFavoriteStore((state) => state.hydrated);
   const exportJson = useFavoriteStore((state) => state.exportJson);
@@ -71,20 +71,20 @@ export function Sidebar() {
     if (term.length < 2) { setQuickTagSuggestions([]); return; }
     let cancelled = false;
     const timeout = window.setTimeout(async () => {
-      const cached = await getCachedSuggestions(source, term);
+      const cached = await getCachedSuggestions('danbooru', term);
       if (cancelled) return;
       if (cached?.items.length) {
-        await ensureCanonicalTagMetadata(source, cached.items.map((item) => item.name)).catch(() => undefined);
-        setQuickTagSuggestions(applyKnownSuggestionCategories(source, cached.items)); setQuickTagDropdownOpen(true); setActiveSuggestion(0);
+        await ensureCanonicalTagMetadata('danbooru', cached.items.map((item) => item.name)).catch(() => undefined);
+        setQuickTagSuggestions(applyKnownSuggestionCategories('danbooru', cached.items)); setQuickTagDropdownOpen(true); setActiveSuggestion(0);
       }
       if (cached && !cached.stale) return;
       try {
-        const result = await getBooruAdapter(source).autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
-        await ensureCanonicalTagMetadata(source, result.map((item) => item.name)).catch(() => undefined);
-        const categorized = applyKnownSuggestionCategories(source, result);
+        const result = await getBooruAdapter('danbooru').autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
+        await ensureCanonicalTagMetadata('danbooru', result.map((item) => item.name)).catch(() => undefined);
+        const categorized = applyKnownSuggestionCategories('danbooru', result);
         await Promise.all([
-          cacheSuggestions(source, term, categorized),
-          rememberTagMetadata(source, result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
+          cacheSuggestions('danbooru', term, categorized),
+          rememberTagMetadata('danbooru', result.map((item) => ({ name: item.name, category: item.category, postCount: item.postCount }))),
         ]);
         if (!cancelled) { setQuickTagSuggestions(categorized); setQuickTagDropdownOpen(true); setActiveSuggestion(categorized.length ? 0 : -1); }
       } catch {

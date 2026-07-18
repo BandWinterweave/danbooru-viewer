@@ -8,8 +8,7 @@ export interface TagCopyOptions {
   escapeParentheses: boolean;
 }
 
-export function formatTagForCopy(tag: TagEntry, options: TagCopyOptions) {
-  if (!options.categories.includes(tag.category)) return null;
+export function formatTagForCopy(tag: TagEntry, options: Pick<TagCopyOptions, 'useUnderscores' | 'escapeParentheses'> & Partial<Pick<TagCopyOptions, 'categories'>>) {
   let value = options.useUnderscores ? tag.name : tag.name.replaceAll('_', ' ');
   if (options.escapeParentheses) value = value.replace(/[()]/g, (character) => `\\${character}`);
   return value;

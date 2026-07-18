@@ -20,12 +20,12 @@ describe('tag copy formatting', () => {
       .toBe('character \\(series\\), sample series');
   });
 
-  it('formats one tag with the same settings and rejects disabled categories', () => {
+  it('formats one tag without applying the multi-tag category filter', () => {
     expect(formatTagForCopy({ name: 'character_(series)', category: 'character' }, { categories: ['character'], useUnderscores: true, escapeParentheses: true }))
       .toBe('character_\\(series\\)');
     expect(formatTagForCopy({ name: 'blue_sky', category: 'general' }, { categories: ['general'], useUnderscores: false, escapeParentheses: false }))
       .toBe('blue sky');
     expect(formatTagForCopy({ name: 'artist_name', category: 'artist' }, { categories: ['general'], useUnderscores: true, escapeParentheses: false }))
-      .toBeNull();
+      .toBe('artist_name');
   });
 });

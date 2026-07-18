@@ -70,8 +70,8 @@ describe('image cache bounds', () => {
 
     const diagnostics = cache.imageCacheDiagnostics();
     expect(entriesMock).toHaveBeenCalledTimes(1);
-    expect(diagnostics.entries).toBeLessThanOrEqual(500);
-    expect(diagnostics.bytes).toBeLessThanOrEqual(cache.IMAGE_CACHE_MAX_BYTES);
+    expect(diagnostics.entries).toBeLessThanOrEqual(5000);
+    expect(diagnostics.bytes).toBeLessThanOrEqual(diagnostics.maxBytes);
   });
 
   it('does not revoke an expired object URL while consumers still hold it', async () => {

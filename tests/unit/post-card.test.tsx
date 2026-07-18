@@ -8,6 +8,7 @@ import { useUiStore } from '../../src/stores/ui-store';
 import { usePostStore } from '../../src/stores/post-store';
 import { useSettingsStore } from '../../src/stores/settings-store';
 import { ToastViewport } from '../../src/components/feedback/ToastViewport';
+import { useFavoriteStore } from '../../src/stores/favorite-store';
 
 const post = normalizePost({
   id: 11590118,
@@ -44,6 +45,7 @@ describe('PostCard', () => {
     useUiStore.setState({ detailOpen: false, currentPost: null });
     useSettingsStore.setState({ layout: 'grid', copyTagCategories: ['artist', 'character', 'copyright', 'general', 'meta'], copyTagsUseUnderscores: false, copyTagsEscapeParentheses: false });
     usePostStore.setState({ enrichTags: vi.fn().mockResolvedValue(post) });
+    useFavoriteStore.setState({ favorites: [], groups: [], hydrated: true });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -95,6 +97,12 @@ describe('PostCard', () => {
 
     expect(writeText).toHaveBeenCalledWith('re naya');
     expect(useFilterStore.getState().activeFilters).toEqual([]);
+  });
+
+  it('shows a persistent indicator for a local favorite', () => {
+    useFavoriteStore.setState({ favorites: [post] });
+    const { container } = render(<PostCard post={post} />);
+    expect(container.querySelector('.local-favorite-badge')).toBeInTheDocument();
   });
 
   it('enriches mounted list cards once and renders every tag', () => {
