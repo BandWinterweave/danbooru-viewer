@@ -118,6 +118,7 @@ export const shellMessages = {
     defaultColumns: 'Default columns',
     thumbnailQuality: 'Thumbnail quality',
     detailImageQuality: 'Large image resolution',
+    detailPreloadCount: 'Images to preload ahead',
     imageCacheLimit: 'Browsing image cache (MB)',
     previewQuality: 'Preview (low bandwidth)',
     sampleQuality: 'Sample (recommended)',

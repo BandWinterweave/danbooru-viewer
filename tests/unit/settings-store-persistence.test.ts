@@ -39,6 +39,17 @@ describe('settings store migration', () => {
     expect(store.getState().imageCacheLimitBytes).toBe(64 * 1024 ** 2);
   });
 
+  it('persists and clamps the number of large images preloaded ahead', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setDetailPreloadCount(8);
+    expect(store.getState().detailPreloadCount).toBe(8);
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('"detailPreloadCount":8');
+    store.getState().setDetailPreloadCount(99);
+    expect(store.getState().detailPreloadCount).toBe(20);
+    store.getState().setDetailPreloadCount(-1);
+    expect(store.getState().detailPreloadCount).toBe(0);
+  });
+
   it('clamps grid and masonry columns to the 2-12 range', async () => {
     const store = await loadSettingsStore();
     store.getState().setColumns(99);

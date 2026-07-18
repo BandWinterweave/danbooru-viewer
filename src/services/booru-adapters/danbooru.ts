@@ -144,13 +144,13 @@ export const danbooruAdapter: BooruAdapter = {
     return post;
   },
 
-  async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {
+  async autocomplete(query: string, credentials?: Credentials, signal?: AbortSignal): Promise<TagAutocompleteResult[]> {
     if (query.trim().length < 2) return [];
     const url = new URL('/autocomplete.json', BASE_URL);
     url.searchParams.set('search[query]', query.trim());
     url.searchParams.set('search[type]', 'tag_query');
     url.searchParams.set('limit', '8');
-    const items = await apiGet<DanbooruAutocompleteItem[]>(url, credentials);
+    const items = await apiGet<DanbooruAutocompleteItem[]>(url, credentials, signal);
     return items.map((item) => ({
       name: item.value ?? item.label?.replace(/<[^>]+>/g, '') ?? '',
       label: item.label ?? item.value ?? '',

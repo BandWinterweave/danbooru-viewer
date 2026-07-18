@@ -30,6 +30,10 @@ export function previewMediaUrl(post: UnifiedPost) {
   return isVideoPost(post) ? post.playbackUrl || post.fileUrl : post.previewUrl || post.sampleUrl;
 }
 
+export function isLongImagePost(post: UnifiedPost) {
+  return post.imageWidth > 0 && post.imageHeight / post.imageWidth > 6;
+}
+
 export function thumbnailImageUrl(post: UnifiedPost, quality: ThumbnailQuality) {
   return quality === 'sample' ? post.sampleUrl || post.previewUrl : post.previewUrl || post.sampleUrl;
 }

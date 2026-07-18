@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { enrichPostTags } from '../../src/services/booru-adapters/tag-enrichment';
+import { enrichPageTags, enrichPostTags, resetPageTagEnrichmentForTests } from '../../src/services/booru-adapters/tag-enrichment';
 import { rememberTagMetadata, resetTagMetadataMemoryForTests } from '../../src/services/booru-adapters/tag-categories';
 import type { UnifiedPost } from '../../src/types/post';
 import { apiGet } from '../../src/services/api/client';
@@ -40,6 +40,7 @@ const post: UnifiedPost = {
 describe('cross-source tag enrichment', () => {
   beforeEach(() => {
     resetTagMetadataMemoryForTests();
+    resetPageTagEnrichmentForTests();
     vi.mocked(apiGet).mockReset().mockResolvedValue([{ name: 'fkey', category: 1, post_count: 100 }]);
   });
 
@@ -55,6 +56,36 @@ describe('cross-source tag enrichment', () => {
     await enrichPostTags({ ...post, id: 502 });
 
     expect(apiGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates all tags on a page into one metadata request', async () => {
+    vi.mocked(apiGet).mockResolvedValue([
+      { name: 'fkey', category: 1, post_count: 100 },
+      { name: 'second_tag', category: 4, post_count: 50 },
+    ]);
+    const items = await enrichPageTags([
+      post,
+      { ...post, id: 502, tags: [{ name: 'fkey', category: 'general' }, { name: 'second_tag', category: 'general' }] },
+    ]);
+
+    expect(apiGet).toHaveBeenCalledTimes(1);
+    const requestedUrl = vi.mocked(apiGet).mock.calls[0][0] as URL;
+    expect(requestedUrl.searchParams.get('search[name_comma]')).toBe('fkey,second_tag');
+    expect(items[1].tags[1].category).toBe('character');
+    await enrichPostTags(items[1]);
+    expect(apiGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('splits large page metadata lookups into bounded requests', async () => {
+    const tags = Array.from({ length: 101 }, (_, index) => ({ name: `tag_${index}`, category: 'general' as const }));
+    vi.mocked(apiGet).mockResolvedValue([]);
+
+    await enrichPageTags([{ ...post, tags }]);
+
+    expect(apiGet).toHaveBeenCalledTimes(2);
+    const urls = vi.mocked(apiGet).mock.calls.map(([url]) => url as URL);
+    expect(urls.every((url) => url.toString().length <= 7000)).toBe(true);
+    expect(urls.map((url) => Number(url.searchParams.get('limit')))).toEqual([100, 1]);
   });
 
   it('applies cached categories first and requests only missing tags', async () => {

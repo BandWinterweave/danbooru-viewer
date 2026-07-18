@@ -28,6 +28,7 @@ export const postMessages = {
     format: 'Format',
     uploader: 'Uploader',
     status: 'Status',
+    longImage: 'LONG',
   },
   detail: {
     categories: {

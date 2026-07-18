@@ -70,7 +70,7 @@ function objectUrl(url: string, blob: Blob, expiresAt: number) {
 async function resolveImageUrl(rawUrl: string): Promise<string> {
   const url = normalizeImageUrl(rawUrl);
   if (!url || typeof indexedDB === 'undefined') return url;
-  await initializeIndex();
+  void initializeIndex();
   const live = objectUrls.get(url);
   if (live && (live.expiresAt > Date.now() || live.references > 0)) return live.src;
   if (live) revoke(url);
@@ -88,12 +88,11 @@ async function resolveImageUrl(rawUrl: string): Promise<string> {
     const blob = await response.blob();
     if (blob.size > IMAGE_CACHE_MAX_ITEM_BYTES) return url;
     const value: CachedImage = { blob, size: blob.size, expiresAt: Date.now() + IMAGE_CACHE_TTL, accessedAt: Date.now() };
+    index.set(url, { size: value.size, expiresAt: value.expiresAt, accessedAt: value.accessedAt });
     writeQueue = writeQueue.then(async () => {
       await set(url, value, imageStore);
-      index.set(url, { size: value.size, expiresAt: value.expiresAt, accessedAt: value.accessedAt });
       await pruneIndex();
     }).catch(() => undefined);
-    await writeQueue;
     return objectUrl(url, blob, value.expiresAt);
   } catch {
     return url;

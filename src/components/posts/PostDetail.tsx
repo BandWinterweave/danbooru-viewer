@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleOff, ExternalLink, Heart, LoaderCircle, Minus, Plus, Send, Sparkles, X } from 'lucide-react';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useFavoriteStore } from '../../stores/favorite-store';
 import { useFilterStore } from '../../stores/filter-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -70,6 +70,7 @@ export function PostDetail() {
   const credential = useSettingsStore((state) => state.credentials[post?.source ?? state.activeSource]);
   const credentialRevision = useSettingsStore((state) => state.credentialRevisions[post?.source ?? state.activeSource] ?? 0);
   const detailImageQuality = useSettingsStore((state) => state.detailImageQuality);
+  const detailPreloadCount = useSettingsStore((state) => state.detailPreloadCount);
   const copyTagsUseUnderscores = useSettingsStore((state) => state.copyTagsUseUnderscores);
   const copyTagsEscapeParentheses = useSettingsStore((state) => state.copyTagsEscapeParentheses);
   const isLocal = useFavoriteStore((state) => post ? state.isLocal(post) : false);
@@ -102,6 +103,7 @@ export function PostDetail() {
   const pools = resources.pools.data;
   const relations = resources.relations.data;
   const postIndex = post ? posts.findIndex((item) => item.source === post.source && item.id === post.id) : -1;
+  const preloadPosts = useMemo(() => postIndex < 0 || !post || detailPreloadCount === 0 ? [] : posts.slice(postIndex + 1, postIndex + 1 + detailPreloadCount), [detailPreloadCount, post, postIndex, posts]);
   const canPrevious = detailContext === 'browse' && postIndex > 0;
   const canNext = detailContext === 'browse' && postIndex >= 0 && (postIndex < posts.length - 1 || hasMore);
 
@@ -167,7 +169,7 @@ export function PostDetail() {
       <button className={`detail-scrim ${open ? 'is-open' : ''}`} aria-label={postMessages.detail.closeDetails} onClick={close} />
       <div ref={dialogRef} className={`detail-workspace ${open ? 'is-open' : ''}`} role="dialog" aria-modal="true" aria-hidden={!open} aria-labelledby="post-detail-title" onKeyDown={trapFocus}>
         <section className="detail-media-stage" aria-label={postMessages.detail.postRecord}>
-          <PostDetailMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} />
+          <PostDetailMedia key={`${post.source}:${post.id}:${detailImageQuality}`} post={post} quality={detailImageQuality} preloadPosts={preloadPosts} />
           <button className="detail-nav detail-nav--previous" disabled={!canPrevious} title={postMessages.detail.previousPost} aria-label={postMessages.detail.previousPost} onClick={() => void navigate(-1)}><ArrowLeft size={20} /></button>
           <button className="detail-nav detail-nav--next" disabled={!canNext || isLoadingMore} title={postMessages.detail.nextPost} aria-label={postMessages.detail.nextPost} onClick={() => void navigate(1)}><ArrowRight size={20} /></button>
         </section>

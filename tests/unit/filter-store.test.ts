@@ -34,9 +34,11 @@ describe('filter store', () => {
     expect(useFilterStore.getState().getSearchQuery().tags).toBe('1girl -sketch');
   });
 
-  it('keeps rating selection portable by allowing one rating at a time', () => {
+  it('allows multiple rating selections', () => {
     useFilterStore.getState().toggleRating('g');
     useFilterStore.getState().toggleRating('q');
+    expect(useFilterStore.getState().ratings).toEqual(['g', 'q']);
+    useFilterStore.getState().toggleRating('g');
     expect(useFilterStore.getState().ratings).toEqual(['q']);
   });
 

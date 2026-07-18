@@ -133,6 +133,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .filter-chip--include { border-color: color-mix(in srgb, var(--green) 55%, var(--line)); background: var(--green-soft); color: var(--green); }
 .filter-chip--exclude { border-color: color-mix(in srgb, var(--coral) 55%, var(--line)); background: var(--coral-soft); color: var(--coral); }
 .filter-chip--rating-g { background: var(--green-soft); color: var(--green); }
+.filter-chip--rating-s { border-color: color-mix(in srgb, var(--blue) 55%, var(--line)); background: color-mix(in srgb, var(--blue) 12%, var(--surface)); color: var(--blue); }
 .filter-chip--rating-q { background: var(--amber-soft); color: var(--amber); }
 .filter-chip--rating-e { background: var(--coral-soft); color: var(--coral); }
 .filter-chip--meta { border-color: color-mix(in srgb, var(--blue) 55%, var(--line)); background: color-mix(in srgb, var(--blue) 12%, var(--surface)); color: var(--blue); padding-left: 8px; }
@@ -298,9 +299,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .post-card--list > .rating-badge { display: none; }
 .image-missing { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 11px; }
 .rating-badge { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; padding: 0; border: 1px solid rgb(255 255 255 / 65%); border-radius: 3px; display: grid; place-items: center; color: white; font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; font-weight: 800; text-transform: uppercase; box-shadow: 0 2px 8px rgb(0 0 0 / 20%); pointer-events: none; }
-.rating-badge--g, .rating-badge--s { background: #27765f; }
+.rating-badge--g { background: #27765f; }
+.rating-badge--s { background: #2c7e9e; }
 .rating-badge--q { background: #a57218; }
 .rating-badge--e { background: #b94e3b; }
+.long-image-badge { position: absolute; top: 7px; left: 35px; min-height: 22px; padding: 0 6px; border: 1px solid rgb(255 255 255 / 65%); border-radius: 3px; background: rgb(10 10 14 / 78%); color: white; display: flex; align-items: center; font-size: 9px; font-weight: 700; pointer-events: none; }
 .post-select { position: absolute; z-index: 4; top: 7px; right: 7px; width: 24px; height: 24px; padding: 0; border: 1px solid rgb(255 255 255 / 70%); border-radius: 3px; background: rgb(23 32 30 / 72%); color: white; display: grid; place-items: center; opacity: 0; cursor: pointer; }
 .post-copy { position: absolute; z-index: 4; top: 7px; right: 37px; width: 24px; height: 24px; padding: 0; border: 1px solid rgb(255 255 255 / 70%); border-radius: 3px; background: rgb(23 32 30 / 72%); color: white; display: grid; place-items: center; opacity: 0; cursor: pointer; }
 .post-comfy { position: absolute; z-index: 4; top: 7px; right: 67px; width: 24px; height: 24px; padding: 0; border: 1px solid rgb(255 255 255 / 70%); border-radius: 3px; background: rgb(23 32 30 / 72%); color: white; display: grid; place-items: center; opacity: 0; cursor: pointer; }
@@ -625,7 +628,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .post-card:hover { border-color: var(--green); background: var(--surface-soft); box-shadow: 0 0 0 1px var(--green), 0 16px 44px -22px color-mix(in srgb, var(--green) 66%, transparent); transform: translateY(-2px); }
 .post-card:hover .post-image-link img { transform: scale(1.035); }
 .rating-badge, .post-select, .post-copy, .post-comfy, .downloaded-badge, .local-favorite-badge { border-radius: 3px; background: rgb(10 10 14 / 78%); backdrop-filter: blur(8px); }
-.rating-badge--g, .rating-badge--s { border-color: color-mix(in srgb, var(--green) 60%, white); background: color-mix(in srgb, var(--green) 72%, #0a0a0e); color: #0a0a0e; }
+.rating-badge--g { border-color: color-mix(in srgb, var(--green) 60%, white); background: color-mix(in srgb, var(--green) 72%, #0a0a0e); color: #0a0a0e; }
+.rating-badge--s { border-color: color-mix(in srgb, var(--blue) 60%, white); background: color-mix(in srgb, var(--blue) 72%, #0a0a0e); color: #0a0a0e; }
 .post-tooltip { border-color: color-mix(in srgb, var(--green) 62%, var(--line)); border-radius: 4px; background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: 0 18px 44px rgb(0 0 0 / 28%); backdrop-filter: blur(18px); }
 .post-tooltip-header { background: color-mix(in srgb, var(--surface-soft) 84%, transparent); }
 .state-panel-mark { border-color: var(--green); box-shadow: 0 0 28px color-mix(in srgb, var(--green) 12%, transparent); }

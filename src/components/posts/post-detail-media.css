@@ -1,11 +1,12 @@
 .detail-media-stage { position: relative; min-width: 0; height: 100dvh; overflow: hidden; background: color-mix(in srgb, var(--canvas) 82%, transparent); backdrop-filter: blur(8px); display: grid; place-items: center; touch-action: none; }
 .detail-media-zoom { position: relative; width: 100%; height: 100%; overflow: hidden; cursor: grab; }
 .detail-media-zoom.is-dragging { cursor: grabbing; }
-.detail-media-zoom img { position: absolute; inset: 0; width: auto; height: auto; max-width: calc(100% - 96px); max-height: calc(100% - 48px); margin: auto; object-fit: contain; user-select: none; transform-origin: center; transition: transform 80ms linear, opacity 140ms ease; }
+.detail-media-zoom img, .detail-media-video { position: absolute; inset: 0; width: auto; height: auto; max-width: calc(100% - 96px); max-height: calc(100% - 48px); margin: auto; object-fit: contain; user-select: none; transform-origin: center; transition: transform 80ms linear, opacity 140ms ease; }
 .detail-media-thumb { opacity: 1; }
 .detail-media-thumb.is-replaced { opacity: 0; }
 .detail-media-full { opacity: 0; }
 .detail-media-full.is-loaded { opacity: 1; }
+.detail-media-video { width: calc(100% - 96px); height: calc(100% - 48px); touch-action: auto; }
 .detail-media-loading { position: absolute; z-index: 1; inset: 0; color: rgb(255 255 255 / 72%); display: grid; place-items: center; pointer-events: none; }
 .detail-media-stage > .media-image, .detail-media-stage > video, .detail-media-stage > .media-placeholder { width: calc(100% - 96px); height: calc(100% - 48px); max-height: 100%; }
 .detail-media-stage > .media-image img, .detail-media-stage > video { width: 100%; height: 100%; object-fit: contain; }
@@ -16,7 +17,7 @@
 
 @media (max-width: 720px) {
   .detail-media-stage { height: 44dvh; }
-  .detail-media-zoom img { max-width: calc(100% - 72px); max-height: calc(100% - 20px); }
+  .detail-media-zoom img, .detail-media-video { max-width: calc(100% - 72px); max-height: calc(100% - 20px); }
   .detail-nav { width: 34px; height: 44px; }
   .detail-nav--previous { left: 8px; }
   .detail-nav--next { right: 8px; }

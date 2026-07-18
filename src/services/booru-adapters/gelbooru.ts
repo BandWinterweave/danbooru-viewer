@@ -148,7 +148,7 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       if (!result.items[0]) throw new Error(getMessages().domainActions.network.postNotFound(options.name, id));
       return result.items[0];
     },
-    async autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]> {
+    async autocomplete(query: string, credentials?: Credentials, signal?: AbortSignal): Promise<TagAutocompleteResult[]> {
       const term = query.trim().toLowerCase();
       if (term.length < 2) return [];
       const url = new URL('/index.php', options.baseUrl);
@@ -159,7 +159,7 @@ export function createGelbooruAdapter(options: { id: BooruSource; name: string; 
       }
       url.searchParams.set('limit', '8');
       withGelbooruAuth(url, credentials);
-      const items = normalizeGelbooruTagResponse(await apiGet<unknown>(url))
+      const items = normalizeGelbooruTagResponse(await apiGet<unknown>(url, undefined, signal))
         .filter((item) => item.name.toLowerCase().startsWith(term))
         .slice(0, 8);
       items.forEach((item) => rememberTagCategory(options.id, item.name, item.category));

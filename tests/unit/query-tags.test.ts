@@ -28,6 +28,12 @@ describe('source-specific filter translation', () => {
     expect(buildSourceTags('danbooru', { order: 'random' })).toBe('age:<1month order:random');
   });
 
+  it('keeps multiple ratings in the source query', () => {
+    expect(buildSourceTags('danbooru', { ratings: ['g', 'q'] })).toBe('rating:g OR rating:q');
+    expect(buildSourceTags('yandere', { ratings: ['g', 's', 'q'] })).toBe('rating:s OR rating:q');
+    expect(buildSourceTags('danbooru', { ratings: ['g', 's', 'q', 'e'] })).toBe('');
+  });
+
   it('applies unsupported date filters to normalized timestamps', () => {
     expect(isOnOrAfter('2026-07-15T10:00:00Z', '2026-07-15')).toBe(true);
     expect(isOnOrAfter('2026-07-14T23:59:59Z', '2026-07-15')).toBe(false);

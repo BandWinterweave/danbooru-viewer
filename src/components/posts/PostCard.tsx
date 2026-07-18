@@ -9,7 +9,7 @@ import { hasDownloaded } from '../../services/download-service';
 import { DownloadMenu } from '../downloads/DownloadMenu';
 import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
-import { postPageUrl } from '../../services/post-media';
+import { isLongImagePost, postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { formatTagForCopy, formatTagsForCopy, type TagCopyOptions } from '../../services/tag-copy';
 import { useI18n } from '../../i18n/runtime';
@@ -51,6 +51,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
   const cursorPoint = useRef({ x: 0, y: 0 });
   const groupMenuRef = useRef<HTMLDivElement>(null);
   const tags = orderedTags(post);
+  const longImage = isLongImagePost(post);
   const copyOptions: TagCopyOptions = { categories: copyTagCategories, useUnderscores: copyTagsUseUnderscores, escapeParentheses: copyTagsEscapeParentheses };
   const queryTag = tags.find((tag) => tag.category === 'artist') ?? tags.find((tag) => tag.category === 'character') ?? tags[0];
   const postUrl = `${postPageUrl(post)}${post.source === 'danbooru' && queryTag ? `?q=${encodeURIComponent(queryTag.name)}` : ''}`;
@@ -151,6 +152,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
       <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.length ? tags.map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) : postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader === 'unknown' ? postMessages.common.unknown : post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{postMessages.detail.statuses[post.status ?? 'active']}</dd></div></dl></div>}
       <span className={`rating-badge rating-badge--${post.rating}`} title={postMessages.card.rating(post.rating)}>{post.rating}</span>
+      {longImage && <span className="long-image-badge" title={postMessages.card.longImage}>{postMessages.card.longImage}</span>}
       {tooltip}
     </article>
   );

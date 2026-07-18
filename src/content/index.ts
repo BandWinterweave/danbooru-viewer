@@ -27,7 +27,8 @@ function enhancePost(element: Element) {
   const preview = document.createElement('img');
   preview.className = 'dv-hover-preview';
   preview.alt = '';
-  preview.src = image.dataset.largeFileUrl || image.dataset.fileUrl || image.src;
+  const previewUrl = image.dataset.largeFileUrl || image.dataset.fileUrl || image.src;
+  element.addEventListener('mouseenter', () => { if (!preview.src) preview.src = previewUrl; }, { once: true });
   element.append(preview);
 }
 

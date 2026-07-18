@@ -37,4 +37,13 @@ describe('PostDetailMedia', () => {
     rerender(<PostDetailMedia post={{ ...post, id: 31 }} quality="original" />);
     expect(container.querySelector('.detail-media-full')).toHaveStyle({ transform: 'translate(0px, 0px) scale(1)' });
   });
+
+  it('provides native controls and zooming for video', () => {
+    const video = { ...post, fileExt: 'mp4', fileUrl: 'https://cdn.example/video.mp4', playbackUrl: 'https://cdn.example/video.mp4' };
+    const { container } = render(<PostDetailMedia post={video} quality="original" />);
+    const zoom = container.querySelector('.detail-media-zoom') as HTMLElement;
+    fireEvent.wheel(zoom, { deltaY: -5000 });
+    expect(container.querySelector('video')).toHaveAttribute('controls');
+    expect(container.querySelector<HTMLElement>('video')?.style.transform).toContain('scale(50)');
+  });
 });

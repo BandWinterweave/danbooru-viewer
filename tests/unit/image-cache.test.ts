@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => new Map<string, unknown>());
 const entriesMock = vi.hoisted(() => vi.fn(async () => [...database.entries()]));
+const setMock = vi.hoisted(() => vi.fn(async (key: string, value: unknown) => { database.set(key, value); }));
 
 vi.mock('idb-keyval', () => ({
   createStore: vi.fn(() => ({})),
   entries: entriesMock,
   get: vi.fn(async (key: string) => database.get(key)),
-  set: vi.fn(async (key: string, value: unknown) => { database.set(key, value); }),
+  set: setMock,
   del: vi.fn(async (key: string) => { database.delete(key); }),
 }));
 
@@ -20,6 +21,7 @@ describe('image cache bounds', () => {
   beforeEach(() => {
     database.clear();
     entriesMock.mockClear();
+    setMock.mockClear();
     vi.stubGlobal('indexedDB', {});
     vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['image']), { status: 200 })));
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => `blob:${crypto.randomUUID()}`) });
@@ -57,6 +59,19 @@ describe('image cache bounds', () => {
 
     expect(image.src).toBe('https://example.com/original.jpg');
     expect(cache.imageCacheDiagnostics()).toMatchObject({ entries: 0, bytes: 0, objectUrls: 0 });
+  });
+
+  it('returns a fetched image without waiting for the disk write queue', async () => {
+    let finishWrite!: () => void;
+    setMock.mockImplementationOnce(() => new Promise<void>((resolve) => { finishWrite = resolve; }));
+    const cache = await loadCache();
+
+    const image = await cache.acquireCachedImage('https://example.com/non-blocking.jpg');
+
+    expect(image.src).toMatch(/^blob:/);
+    expect(setMock).toHaveBeenCalledTimes(1);
+    finishWrite();
+    image.release();
   });
 
   it('keeps long-running media usage within entry and byte budgets', async () => {

@@ -10,10 +10,14 @@ const ratingValues: Record<BooruSource, Partial<Record<Rating, string>>> = {
 };
 
 export function buildSourceTags(source: BooruSource, query: SearchQuery): string {
-  const rating = query.ratings?.[0];
+  const mappedRatings = [...new Set((query.ratings ?? []).map((rating) => ratingValues[source][rating]).filter((rating): rating is string => Boolean(rating)))];
+  const availableRatings = new Set(Object.values(ratingValues[source]));
+  const rating = mappedRatings.length && mappedRatings.length < availableRatings.size
+    ? mappedRatings.map((value) => `rating:${value}`).join(' OR ')
+    : '';
   const terms = [
     query.tags?.trim(),
-    rating ? `rating:${ratingValues[source][rating] ?? rating}` : '',
+    rating,
     query.scoreMin !== undefined
       ? `score:>=${query.scoreMin}`
       : source === 'danbooru' && query.order === 'score' && !query.tags?.trim() ? 'score:>50' : '',

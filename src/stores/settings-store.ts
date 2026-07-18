@@ -17,6 +17,7 @@ interface SettingsStore {
   columns: number;
   layout: Layout;
   detailImageQuality: DetailImageQuality;
+  detailPreloadCount: number;
   thumbnailQuality: ThumbnailQuality;
   imageCacheLimitBytes: number;
   keyboardEnabled: boolean;
@@ -39,6 +40,7 @@ interface SettingsStore {
   setColumns: (columns: number) => void;
   setLayout: (layout: Layout) => void;
   setDetailImageQuality: (quality: DetailImageQuality) => void;
+  setDetailPreloadCount: (count: number) => void;
   setThumbnailQuality: (quality: ThumbnailQuality) => void;
   setImageCacheLimitBytes: (value: number) => void;
   setKeyboardEnabled: (enabled: boolean) => void;
@@ -65,6 +67,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     columns: 5,
     layout: 'grid',
     detailImageQuality: 'sample',
+    detailPreloadCount: 2,
     thumbnailQuality: 'preview',
     imageCacheLimitBytes: 512 * 1024 ** 2,
     keyboardEnabled: true,
@@ -87,6 +90,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setColumns: (columns) => set({ columns: Math.min(Math.max(columns, 2), 12) }),
     setLayout: (layout) => set({ layout }),
     setDetailImageQuality: (detailImageQuality) => set({ detailImageQuality }),
+    setDetailPreloadCount: (detailPreloadCount) => set({ detailPreloadCount: Math.min(20, Math.max(0, Math.round(detailPreloadCount) || 0)) }),
     setThumbnailQuality: (thumbnailQuality) => set({ thumbnailQuality }),
     setImageCacheLimitBytes: (imageCacheLimitBytes) => set({ imageCacheLimitBytes: Math.min(10 * 1024 ** 3, Math.max(64 * 1024 ** 2, Math.round(imageCacheLimitBytes) || 512 * 1024 ** 2)) }),
     setKeyboardEnabled: (keyboardEnabled) => set({ keyboardEnabled }),

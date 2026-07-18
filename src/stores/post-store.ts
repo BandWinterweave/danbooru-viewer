@@ -8,7 +8,7 @@ import { extensionStorage } from './storage';
 import { getMessages } from '../i18n/runtime-core';
 import { notify } from '../services/notifications';
 import { ApiRequestError } from '../services/api/client';
-import { enrichPostTags } from '../services/booru-adapters/tag-enrichment';
+import { enrichPageTags, enrichPostTags } from '../services/booru-adapters/tag-enrichment';
 
 interface PostStore {
   posts: UnifiedPost[];
@@ -78,6 +78,14 @@ async function fetchVisiblePage(session: SearchSession, firstPage: number) {
 
 export const usePostStore = create<PostStore>()(persist(
   (set, get) => {
+    const enrichInBackground = (session: SearchSession, posts: UnifiedPost[]) => {
+      void enrichPageTags(posts, session.controller.signal).then((items) => {
+        if (!isCurrentSession(session)) return;
+        const enriched = new Map(items.map((post) => [`${post.source}:${post.id}`, post]));
+        set((state) => ({ posts: state.posts.map((post) => enriched.get(`${post.source}:${post.id}`) ?? post) }));
+      }).catch(() => undefined);
+    };
+
     const runSearch = async (query: SearchQuery, loadingPhase: 'initial' | 'refresh' | 'retry') => {
       const recovering = Boolean(get().error);
       const normalizedQuery = { ...query, page: 1, limit: query.limit ?? 40 };
@@ -111,6 +119,7 @@ export const usePostStore = create<PostStore>()(persist(
         if (!isCurrentSession(session)) return;
         session.page = result.page;
         set({ posts: result.items, page: result.page, hasMore: result.hasMore, paginationStopReason: result.paginationStopReason, isLoading: false, loadingPhase: 'idle' });
+        enrichInBackground(session, result.items);
         const messages = getMessages();
         if (recovering) notify({ tone: 'success', title: messages.toast.restored, description: messages.toast.restoredBody });
       } catch (error) {
@@ -141,6 +150,7 @@ export const usePostStore = create<PostStore>()(persist(
             hasMore: result.hasMore,
             paginationStopReason: result.paginationStopReason,
           }));
+          enrichInBackground(session, result.items);
         } catch (error) {
           if (isCurrentSession(session) && !isAbortError(error)) set({ failedOperation: 'append', error: error instanceof Error ? error.message : getMessages().domainActions.network.loadMoreFailed });
         } finally {

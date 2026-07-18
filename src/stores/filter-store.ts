@@ -79,7 +79,7 @@ export const useFilterStore = create<FilterStore>()(persist(
         : chip),
     })),
     clearAll: () => set({ activeFilters: [], ratings: [], meta: {} }),
-    toggleRating: (rating) => set((state) => ({ ratings: state.ratings.includes(rating) ? [] : [rating] })),
+    toggleRating: (rating) => set((state) => ({ ratings: state.ratings.includes(rating) ? state.ratings.filter((item) => item !== rating) : [...state.ratings, rating] })),
     setMetaFilter: (meta) => set((state) => ({ meta: { ...state.meta, ...meta } })),
     savePreset: (name, sourceId) => set((state) => ({ presets: [...state.presets, { id: crypto.randomUUID(), name: name.trim(), sourceId, filters: state.activeFilters, ratings: state.ratings, meta: state.meta, createdAt: new Date().toISOString() }] })),
     renamePreset: (id, rawName) => {

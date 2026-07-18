@@ -70,6 +70,7 @@ export function Sidebar() {
     const term = quickTag.trim();
     if (term.length < 2) { setQuickTagSuggestions([]); return; }
     let cancelled = false;
+    const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions('danbooru', term);
       if (cancelled) return;
@@ -79,7 +80,7 @@ export function Sidebar() {
       }
       if (cached && !cached.stale) return;
       try {
-        const result = await getBooruAdapter('danbooru').autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined);
+        const result = await getBooruAdapter('danbooru').autocomplete(term, credentials?.username && credentials.apiKey ? credentials : undefined, controller.signal);
         await ensureCanonicalTagMetadata('danbooru', result.map((item) => item.name)).catch(() => undefined);
         const categorized = applyKnownSuggestionCategories('danbooru', result);
         await Promise.all([
@@ -91,8 +92,8 @@ export function Sidebar() {
         if (!cancelled && !cached) setQuickTagSuggestions([]);
       }
     }, 350);
-    return () => { cancelled = true; window.clearTimeout(timeout); };
-  }, [source, credentials, quickTag]);
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(timeout); };
+  }, [credentials, quickTag]);
 
   useEffect(() => {
     let cancelled = false;

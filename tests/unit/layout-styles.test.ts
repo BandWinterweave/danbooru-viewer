@@ -19,7 +19,7 @@ describe('workspace layout styles', () => {
   it('contains detail images and uses a readable translucent stage with drag cursors', () => {
     expect(mediaStyles).toMatch(/\.detail-media-stage \{[^}]*color-mix[^}]*backdrop-filter: blur/);
     expect(mediaStyles).toMatch(/\.detail-media-zoom \{[^}]*cursor: grab;/);
-    expect(mediaStyles).toMatch(/\.detail-media-zoom img \{[^}]*position: absolute;[^}]*inset: 0;[^}]*width: auto;[^}]*height: auto;[^}]*max-width: calc\(100% - 96px\);[^}]*max-height: calc\(100% - 48px\);[^}]*margin: auto;[^}]*object-fit: contain;/);
+    expect(mediaStyles).toMatch(/\.detail-media-zoom img, \.detail-media-video \{[^}]*position: absolute;[^}]*inset: 0;[^}]*width: auto;[^}]*height: auto;[^}]*max-width: calc\(100% - 96px\);[^}]*max-height: calc\(100% - 48px\);[^}]*margin: auto;[^}]*object-fit: contain;/);
     expect(mediaStyles).not.toContain('cursor: zoom-in');
   });
 
@@ -32,5 +32,11 @@ describe('workspace layout styles', () => {
     expect(styles).not.toContain('post-tooltip-tags--active');
     expect(styles).not.toContain('tooltip-tag-actions--docked');
     expect(styles).not.toContain('.image-cache-loading');
+  });
+
+  it('uses the sensitive rating color independently from general', () => {
+    expect(styles).toMatch(/\.filter-chip--rating-s \{[^}]*var\(--blue\)/);
+    expect(styles).toMatch(/\.rating-badge--s \{[^}]*var\(--blue\)/);
+    expect(styles).not.toContain('.rating-badge--g, .rating-badge--s');
   });
 });

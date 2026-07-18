@@ -70,7 +70,7 @@ export interface BooruAdapter {
   readonly supportsWrites: boolean;
   searchPosts(query: SearchQuery, credentials?: Credentials, signal?: AbortSignal): Promise<PaginatedResult<UnifiedPost>>;
   getPost(id: number, credentials?: Credentials, signal?: AbortSignal): Promise<UnifiedPost>;
-  autocomplete(query: string, credentials?: Credentials): Promise<TagAutocompleteResult[]>;
+  autocomplete(query: string, credentials?: Credentials, signal?: AbortSignal): Promise<TagAutocompleteResult[]>;
   addFavorite?(postId: number, credentials: Credentials): Promise<void>;
   removeFavorite?(postId: number, credentials: Credentials): Promise<void>;
   vote?(postId: number, score: 1 | -1, credentials: Credentials): Promise<void>;

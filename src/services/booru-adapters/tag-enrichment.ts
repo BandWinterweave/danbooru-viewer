@@ -11,6 +11,27 @@ interface DanbooruTagRecord {
 }
 
 const pendingPosts = new Map<string, Promise<UnifiedPost>>();
+const pageEnrichedPosts = new Set<string>();
+const MAX_PAGE_ENRICHED_POSTS = 10_000;
+
+const postKey = (post: UnifiedPost) => `${post.source}:${post.id}`;
+
+function rememberPageEnrichment(posts: UnifiedPost[]) {
+  posts.forEach((post) => {
+    const key = postKey(post);
+    pageEnrichedPosts.delete(key);
+    pageEnrichedPosts.add(key);
+  });
+  while (pageEnrichedPosts.size > MAX_PAGE_ENRICHED_POSTS) pageEnrichedPosts.delete(pageEnrichedPosts.values().next().value!);
+}
+
+export function hasPageTagEnrichment(post: UnifiedPost) {
+  return pageEnrichedPosts.has(postKey(post));
+}
+
+export function resetPageTagEnrichmentForTests() {
+  pageEnrichedPosts.clear();
+}
 
 function chunks<T>(items: T[], size: number) {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
@@ -20,14 +41,26 @@ export function applyKnownTagCategories(post: UnifiedPost): UnifiedPost {
   return { ...post, tags: post.tags.map((tag) => ({ ...tag, category: tagCategoryFor(post.source, tag.name, tag.category) })) };
 }
 
-async function fetchDanbooruMetadata(names: string[]) {
-  for (const batch of chunks(names, 40)) {
+async function fetchDanbooruMetadata(names: string[], signal?: AbortSignal) {
+  if (!names.length) return;
+  const batches: string[][] = [];
+  for (const name of names) {
+    const current = batches.at(-1) ?? [];
+    const candidate = [...current, name];
+    const candidateUrl = new URL('/tags.json', 'https://danbooru.donmai.us');
+    candidateUrl.searchParams.set('search[name_comma]', candidate.join(','));
+    candidateUrl.searchParams.set('limit', String(candidate.length));
+    if (current.length && (candidate.length > 100 || candidateUrl.toString().length > 7000)) batches.push([name]);
+    else if (current.length) batches[batches.length - 1] = candidate;
+    else batches.push(candidate);
+  }
+  const records = (await Promise.all(batches.map(async (batch) => {
     const url = new URL('/tags.json', 'https://danbooru.donmai.us');
     url.searchParams.set('search[name_comma]', batch.join(','));
     url.searchParams.set('limit', String(batch.length));
-    const records = await apiGet<DanbooruTagRecord[]>(url);
-    await rememberTagMetadata('danbooru', records.map((record) => ({ name: record.name, category: tagCategoryFromType(record.category), postCount: record.post_count })));
-  }
+    return apiGet<DanbooruTagRecord[]>(url, undefined, signal);
+  }))).flat();
+  await rememberTagMetadata('danbooru', records.map((record) => ({ name: record.name, category: tagCategoryFromType(record.category), postCount: record.post_count })));
 }
 
 export async function ensureCanonicalTagMetadata(source: UnifiedPost['source'], names: string[]) {
@@ -35,6 +68,19 @@ export async function ensureCanonicalTagMetadata(source: UnifiedPost['source'], 
   await hydrateTagMetadata(source, uniqueNames);
   const missingCanonical = uniqueNames.filter((name) => !hasCanonicalTagCategory(name));
   if (missingCanonical.length) await fetchDanbooruMetadata(missingCanonical);
+}
+
+export async function enrichPageTags(posts: UnifiedPost[], signal?: AbortSignal) {
+  if (!posts.length) return posts;
+  if (posts.every((post) => post.source === 'danbooru')) { rememberPageEnrichment(posts); return posts; }
+  const source = posts[0].source;
+  const names = [...new Set(posts.flatMap((post) => post.tags.map((tag) => tag.name)))];
+  await hydrateTagMetadata(source, names);
+  const missingCanonical = names.filter((name) => !hasCanonicalTagCategory(name));
+  if (missingCanonical.length) await fetchDanbooruMetadata(missingCanonical, signal);
+  const enriched = posts.map(applyKnownTagCategories);
+  rememberPageEnrichment(enriched);
+  return enriched;
 }
 
 export function applyKnownSuggestionCategories<T extends { name: string; category: UnifiedPost['tags'][number]['category'] }>(source: UnifiedPost['source'], items: T[]) {
@@ -71,6 +117,7 @@ async function enrich(post: UnifiedPost, credentials?: Credentials, onCached?: (
 }
 
 export function enrichPostTags(post: UnifiedPost, credentials?: Credentials, onCached?: (cached: UnifiedPost) => void) {
+  if (hasPageTagEnrichment(post)) return Promise.resolve(post);
   const key = `${post.source}:${post.id}`;
   const pending = pendingPosts.get(key);
   if (pending) return pending;

@@ -17,7 +17,6 @@ export function SearchBar() {
   const addSearchFilters = useFilterStore((state) => state.addSearchFilters);
   const getSearchQuery = useFilterStore((state) => state.getSearchQuery);
   const searchPosts = usePostStore((state) => state.search);
-  const activeSource = useSettingsStore((state) => state.activeSource);
   const credentials = useSettingsStore((state) => state.credentials.danbooru);
   const [suggestions, setSuggestions] = useState<TagAutocompleteResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -29,6 +28,7 @@ export function SearchBar() {
     const lastTerm = searchText.trim().split(/\s+/).at(-1)?.replace(/^-/, '') ?? '';
     if (lastTerm.length < 2) { setSuggestions([]); return; }
     let cancelled = false;
+    const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       const cached = await getCachedSuggestions('danbooru', lastTerm);
       if (cancelled) return;
@@ -38,7 +38,7 @@ export function SearchBar() {
        }
       if (cached && !cached.stale) return;
       try {
-        const result = await getBooruAdapter('danbooru').autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined);
+        const result = await getBooruAdapter('danbooru').autocomplete(lastTerm, credentials?.username && credentials.apiKey ? credentials : undefined, controller.signal);
         await ensureCanonicalTagMetadata('danbooru', result.map((item) => item.name)).catch(() => undefined);
         const categorized = applyKnownSuggestionCategories('danbooru', result);
         await Promise.all([
@@ -50,8 +50,8 @@ export function SearchBar() {
         if (!cancelled && !cached) setSuggestions([]);
       }
     }, 350);
-    return () => { cancelled = true; window.clearTimeout(timeout); };
-  }, [activeSource, credentials, searchText]);
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(timeout); };
+  }, [credentials, searchText]);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();

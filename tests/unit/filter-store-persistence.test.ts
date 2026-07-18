@@ -32,12 +32,12 @@ describe('filter store rating persistence', () => {
   it('persists a manually selected rating across reloads', async () => {
     const store = await loadFilterStore();
     store.getState().toggleRating('e');
-    expect(store.getState().ratings).toEqual(['e']);
+    expect(store.getState().ratings).toEqual(['g', 'e']);
 
     vi.resetModules();
     const reloadedStore = await loadFilterStore();
 
-    expect(reloadedStore.getState().ratings).toEqual(['e']);
+    expect(reloadedStore.getState().ratings).toEqual(['g', 'e']);
   });
 
   it('restores legacy presets in their existing array order', async () => {

@@ -147,6 +147,7 @@ export const zhCN = {
       defaultColumns: '默认列数',
       thumbnailQuality: '缩略图质量',
       detailImageQuality: '大图分辨率',
+      detailPreloadCount: '向后预载大图数量',
       imageCacheLimit: '浏览图片缓存上限（MB）',
       previewQuality: '预览图（低带宽）',
       sampleQuality: '样图（推荐）',
@@ -222,6 +223,7 @@ export const zhCN = {
       format: '格式',
       uploader: '上传者',
       status: '状态',
+      longImage: '长图',
     },
     detail: {
       categories: { artist: '画师', character: '角色', copyright: '版权', general: '常规', meta: '元数据' },

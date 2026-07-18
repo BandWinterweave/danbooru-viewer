@@ -7,7 +7,7 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { PostCard } from './PostCard';
 import { StatePanel } from '../feedback/StatePanel';
 import { useI18n } from '../../i18n/runtime';
-import { hasAvailablePreview } from '../../services/post-media';
+import { hasAvailablePreview, isLongImagePost } from '../../services/post-media';
 
 export function PostGrid() {
   const { messages } = useI18n();
@@ -65,7 +65,7 @@ export function PostGrid() {
       <div ref={setGridElement} className={`virtual-grid layout-${layout}`} style={{ height: `${virtualizer.getTotalSize()}px`, '--grid-columns': responsiveColumns } as React.CSSProperties}>
         {masonry ? virtualizer.getVirtualItems().map((item) => {
            const post = visiblePosts[item.index];
-          const aspect = post.imageWidth && post.imageHeight ? post.imageWidth / post.imageHeight : 1 / 1.18;
+           const aspect = post.imageWidth && post.imageHeight ? Math.max(post.imageWidth / post.imageHeight, isLongImagePost(post) ? .25 : 0) : 1 / 1.18;
           return <div className="masonry-item" key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ left: `calc(${(item.lane ?? 0) * 100 / responsiveColumns}% + ${(item.lane ?? 0) * 10 / responsiveColumns}px)`, width: `calc(${100 / responsiveColumns}% - ${10 * (responsiveColumns - 1) / responsiveColumns}px)`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`, '--media-aspect': aspect } as React.CSSProperties}><PostCard post={post} /></div>;
         }) : virtualizer.getVirtualItems().map((row) => {
            const rowPosts = visiblePosts.slice(row.index * responsiveColumns, (row.index + 1) * responsiveColumns);

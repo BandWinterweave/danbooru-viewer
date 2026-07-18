@@ -2,6 +2,7 @@ import { BookmarkPlus, Plus, RotateCcw, X } from 'lucide-react';
 import { useFilterStore } from '../../stores/filter-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useI18n } from '../../i18n/runtime';
+import { buildSourceTags } from '../../services/booru-adapters/query-tags';
 
 interface FilterChipBarProps { onAddFilter: () => void }
 
@@ -18,7 +19,12 @@ export function FilterChipBar({ onAddFilter }: FilterChipBarProps) {
   const savePreset = useFilterStore((state) => state.savePreset);
   const source = useSettingsStore((state) => state.activeSource);
   const metaEntries = Object.entries(meta).filter(([, value]) => value !== undefined && value !== '');
-  const total = filters.length + ratings.length + metaEntries.length;
+  const metaChips = metaEntries.flatMap(([key, value]) => {
+    const label = shellMessages.filterBar.metaLabel(key);
+    const terms = key === 'order' ? buildSourceTags(source, { order: String(value) }).split(/\s+/).filter(Boolean) : [`${label}: ${String(value)}`];
+    return terms.map((term, index) => ({ id: `${key}:${index}:${term}`, key, label, term }));
+  });
+  const total = filters.length + ratings.length + metaChips.length;
 
   return (
     <div className="filter-row">
@@ -38,7 +44,7 @@ export function FilterChipBar({ onAddFilter }: FilterChipBarProps) {
             <button className="chip-remove" title={shellMessages.filterBar.removeRating} onClick={() => toggleRating(rating)}><X size={13} /></button>
           </span>
         ))}
-        {metaEntries.map(([key, value]) => { const label = shellMessages.filterBar.metaLabel(key); return <span className="filter-chip filter-chip--meta" key={key}>{label}: {String(value)}<button className="chip-remove" title={shellMessages.filterBar.removeMeta(label)} onClick={() => setMeta({ [key]: undefined })}><X size={13} /></button></span>; })}
+        {metaChips.map(({ id, key, label, term }) => <span className="filter-chip filter-chip--meta" key={id}>{term}<button className="chip-remove" title={shellMessages.filterBar.removeMeta(label)} onClick={() => setMeta({ [key]: undefined })}><X size={13} /></button></span>)}
       </div>
       <div className="filter-actions">
         <button className="quiet-button" onClick={onAddFilter}><Plus size={15} /> {shellMessages.filterBar.addFilter}</button>
