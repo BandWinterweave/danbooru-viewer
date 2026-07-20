@@ -1,114 +1,246 @@
 # Danbooru Viewer
 
-**把散落在多个 Booru 图源里的灵感，直接送进本机 ComfyUI。**
+**把多个 Booru 图源中的参考图整理后，直接送入本机 ComfyUI。**
 
-[中文](#中文) | [English](#english)
- 
-![](./docs/screenshots-20260717/1.png)
-![](./docs/screenshots-20260717/2.png)
-![](./docs/screenshots-20260717/3.png)
+[中文说明](README.md) | [English](README_EN.md)
 
-Danbooru Viewer 是一个 Manifest V3 浏览器扩展。它把新标签页变成统一的图片发现、整理与生成工作台：在五个 Booru 图源中找图，保留标签和来源上下文，整理到本地收藏，再用冻结的工作流快照发送到 `127.0.0.1` 上的 ComfyUI。
+![Danbooru Viewer 主界面](./docs/screenshots-20260717/1.png)
 
-## 中文
+Danbooru Viewer 是一个 Manifest V3 浏览器扩展。它接管新标签页，统一浏览 Danbooru、Gelbooru、Safebooru、Yande.re 和 Rule34，并提供本地收藏、批量下载和 ComfyUI 工作台。ComfyUI 连接仅允许 `127.0.0.1`。
 
-### 一条不断线的创作路径
+## 主要功能
 
-参考图工作流最耗时的部分，往往不是生成，而是反复切站、复制标签、下载文件、寻找工作流窗口，再确认刚才发送的到底是哪一张图。
+- 统一搜索五个 Booru 图源，支持自动补全、包含/排除标签、快捷标签和筛选预设。
+- 支持普通、敏感、可疑和露骨四级分级，以及评分、日期、尺寸和排序条件。
+- 提供网格、瀑布流和信息列表；详情页可查看高质量图片、分类标签与图源元数据。
+- 收藏与分组完全保存在本机，支持批量整理、搜索、筛选和 JSON 导入导出。
+- 从缩略图、详情、多选结果、收藏分组、本地文件或第三方网页发送图片到 ComfyUI。
+- ComfyUI 任务使用持久化串行队列，支持进度、取消、重试、输出预览和历史记录。
+- 界面支持简体中文、英文、亮色、暗色和跟随系统主题。
 
-Danbooru Viewer 把这些步骤收进同一个新标签页：
+## 安装
 
-1. **发现**：用同一套搜索、评级与高级筛选浏览 Danbooru、Gelbooru、Safebooru、Yande.re 和 Rule34。
-2. **看清**：缩略图快速扫图，大图按预览、样图或原图渐进加载；滚轮缩放、拖拽查看细节。
-3. **留下上下文**：分类标签、作者、来源、分辨率和站点关系与图片一起呈现，标签可直接复制或加入搜索条件。
-4. **整理**：图片进入完全本地的收藏库，支持分组、批量整理、搜索和 JSON 导入导出。
-5. **生成**：从缩略图、详情、多选结果或整个收藏组直接发送到 ComfyUI；队列在页面关闭后仍可继续执行。
+目前需要从源码构建。环境要求：
 
-> **截图占位：从发现到详情**  
-> 建议内容：左侧大图，右侧分类标签与元数据，突出渐进大图和标签上下文。
-
-### 为什么它适合提示词与参考图工作流
-
-- **五个图源，一套操作**：统一标签搜索、包含/排除条件、自动补全、快捷标签和可排序筛选预设。
-- **不是只有缩略图**：详情与 ComfyUI 工作台的输入放大均加载高质量资源；原图失败时按样图、预览图回退。
-- **标签直接进入工作流**：复用可配置的五类标签格式，把最终文本写入所有 `REVERSE` 节点。
-- **发送时冻结上下文**：工作流 JSON、OPTION 值、标签和输入引用在入队时形成快照，之后修改预设不会改变已排队任务。
-- **可靠的本地队列**：串行执行，显示当前节点、进度和耗时；支持排序、删除、取消、失败重试、断线等待和后台恢复。
-- **输出仍在眼前**：工作台集中查看图片与文本输出、放大结果和历史记录，可选择是否缓存输出。
-- **隐私边界明确**：没有分析、遥测或项目服务器；ComfyUI 仅允许 `127.0.0.1`，不申请任意网页访问和系统通知权限。
-
-![](./docs/screenshots-20260717/4.png)
-![](./docs/screenshots-20260717/5.png)
-![](./docs/screenshots-20260717/6.png)
-
-### ComfyUI 快速开始
-
-1. 启动本机 ComfyUI，默认地址为 `http://127.0.0.1:8188/`。
-2. 在 ComfyUI 中导出 **API format** JSON，而不是界面工作流 JSON。
-3. 打开 Viewer 顶部的 **ComfyUI** 工作台并导入 JSON。
-4. 激活工作流，按需填写 `OPTION*` 参数。
-5. 在图片缩略图、详情、多选工具栏、收藏组或本地文件区发送任务。
-
-工作流通过节点标题声明接入点：
-
-| 节点标题  | 用途                                                |
-| --------- | --------------------------------------------------- |
-| `INPUT`   | 接收输入图片；支持多个输入节点                      |
-| `OUTPUT*` | 收集图片或文本输出，例如 `OUTPUT1`、`OUTPUT prompt` |
-| `REVERSE` | 接收按 Viewer 设置格式化的图片标签                  |
-| `OPTION*` | 暴露可保存的文本或整数参数                          |
-
-导入时会校验节点和必需字段。每个输入生成一个独立任务，并允许重复入队。本地静态图直接发送；GIF、视频和 ugoira/ZIP 提取第一帧后进入同一图片上传链路。
-
-### 浏览与收藏能力
-
-- `General`、`Sensitive`、`Questionable`、`Explicit` 四级评级会转换为各图源语法；首次安装只启用 `General`。
-- 评分、日期、最低分辨率和排序筛选；虚拟滚动网格、瀑布流和信息列表支持 2-8 列。
-- 详情按图源能力展示分类标签、相关标签、图集、父子帖子、评论、投票与远程收藏。
-- 本地收藏支持跨组搜索、排序、筛选、批量移动，以及带预览的 JSON 合并或覆盖导入。
-- 原图、样图、缩略图和可播放视频下载，支持批量选择与文件名模板。
-- 中英文运行时切换、亮色/暗色/跟随系统主题和响应式双列布局。
-
-![](./docs/screenshots-20260717/7.png)
-> 建议内容：分组导航、批量选择工具栏和收藏结果同屏。
-
-### 图源与凭据
-
-| 图源      | 公开浏览 | 凭据                   | 登录后能力           |
-| --------- | -------: | ---------------------- | -------------------- |
-| Danbooru  |       是 | 用户名 + API Key，可选 | 远程收藏、投票、评论 |
-| Gelbooru  |       否 | User ID + API Key      | 搜索、添加远程收藏   |
-| Safebooru |       是 | 无                     | 只读                 |
-| Yande.re  |       是 | 用户名 + API Key，可选 | 认证只读访问         |
-| Rule34    |       否 | User ID + API Key      | 搜索                 |
-
-凭据按图源保存在浏览器扩展存储中，未额外加密，并且只发送给对应图源。Yande.re 没有独立的 `General` 与 `Sensitive` 评级，二者均映射为其 `Safe` 条件。
-
-### 从源码安装
-
-需要 [Node.js](https://nodejs.org/) 20.19 或更高版本及 npm。
+- Node.js 20.19 或更高版本
+- npm
+- Chrome、Edge，或 Firefox 140 及以上版本
 
 ```bash
 npm ci
-npm run build          # Chrome / Edge -> dist/
-npm run build:firefox  # Firefox -> dist-firefox/
+npm run build          # Chrome / Edge，输出到 dist/
+npm run build:firefox  # Firefox，输出到 dist-firefox/
 ```
 
-Chrome / Edge：打开 `chrome://extensions/` 或 `edge://extensions/`，启用开发者模式，加载 `dist` 目录。  
-Firefox：打开 `about:debugging#/runtime/this-firefox`，选择“临时载入附加组件”，打开 `dist-firefox/manifest.json`。最低版本为 Firefox 140。
+### Chrome / Edge
 
-### 使用边界
+1. 打开 `chrome://extensions/` 或 `edge://extensions/`。
+2. 启用“开发者模式”。
+3. 点击“加载已解压的扩展程序”。
+4. 选择项目中的 `dist` 目录。
+5. 新建标签页，确认 Viewer 已加载。
 
-- ComfyUI 仅支持 HTTP(S) `127.0.0.1`，默认端口 `8188`；不支持局域网、远程实例、认证头或绕过自签名证书。
-- 运行中取消会在确认后调用实例级 `/interrupt`，可能同时中断该实例上的其他任务。
-- `/prompt` 已提交但响应丢失时，任务会标记为需要人工确认，不自动重发，以避免重复生成。
-- ComfyUI 任务媒体默认容量上限为 1 GB；活动任务输入受保护。历史默认保留 100 条，可在设置中修改。
-- 删除 Viewer 历史只删除本地元数据和缓存，不删除 ComfyUI 服务器上的文件。
-- Gelbooru 与 Rule34 必须配置凭据后才能搜索；不同图源支持的元数据和登录后操作并不完全一致。
+### Firefox
 
-完整数据范围与权限理由见[隐私声明](PRIVACY.md)。
+1. 打开 `about:debugging#/runtime/this-firefox`。
+2. 点击“临时载入附加组件”。
+3. 选择 `dist-firefox/manifest.json`。
 
-### 开发与验证
+Firefox 的临时附加组件会在浏览器重启后移除，需要再次载入。
+
+## 首次配置
+
+打开扩展设置页后，建议按以下顺序配置：
+
+1. 选择界面语言和主题。
+2. 设置默认布局、列数、缩略图质量和详情图片质量。
+3. 按需设置浏览图片缓存上限、视频自动播放和键盘快捷键。
+4. 为需要认证的图源填写凭据并运行连接测试。
+5. 配置 ComfyUI 地址、历史数量、任务媒体上限和输出缓存。
+6. 导入并激活一个 ComfyUI API 工作流。
+
+设置保存在浏览器扩展存储中。图源凭据未额外加密，只会用于对应图源的请求。
+
+## 图源与凭据
+
+| 图源 | 公开浏览 | 凭据 | 可用能力 |
+| --- | --- | --- | --- |
+| Danbooru | 是 | 用户名 + API Key，可选 | 搜索；认证后可远程收藏、投票和评论 |
+| Gelbooru | 否 | User ID + API Key | 搜索和远程收藏 |
+| Safebooru | 是 | 无 | 只读搜索 |
+| Yande.re | 是 | 用户名 + API Key，可选 | 搜索；认证只读访问 |
+| Rule34 | 否 | User ID + API Key | 搜索 |
+
+点击设置中的“测试连接”可区分图源不可达、凭据无效、凭据有效和只能确认图源可达等状态。
+
+Yande.re 没有独立的 General 与 Sensitive 条件，Viewer 会把这两级映射到 Yande.re 的 Safe。
+
+## 浏览与筛选
+
+1. 在顶部切换图源。
+2. 输入标签；从自动补全中选择，或直接提交搜索。
+3. 使用标签旁操作把标签加入包含或排除条件。
+4. 选择需要显示的分级：普通为绿色、敏感为蓝色、可疑为琥珀色、露骨为红色。
+5. 在高级筛选中设置评分、日期、最小尺寸和排序。
+6. 把常用组合保存为筛选预设。
+
+首次安装默认只启用 General。不同图源支持的筛选和详情资源并不完全相同。
+
+![图片详情与标签信息](./docs/screenshots-20260717/4.png)
+
+## 图片详情、下载与收藏
+
+- 点击缩略图打开详情。详情图按设置加载预览、样图或原图；加载失败时会向较低质量回退。
+- 大图支持滚轮缩放、拖拽移动和双击复位。
+- 可复制单个标签或按分类复制完整标签文本。
+- 下载支持缩略图、样图、原图和可播放视频；文件名可使用 `{id}`、`{tags}`、`{artist}`、`{rating}`、`{source}`、`{size}`。
+- 本地收藏支持分组、批量移动、跨组搜索、排序和筛选。
+- 收藏 JSON 导入会先展示预览，可选择合并或覆盖。
+
+![本地收藏与批量操作](./docs/screenshots-20260717/7.png)
+
+## ComfyUI 快速开始
+
+### 1. 启动 ComfyUI
+
+默认地址为：
+
+```text
+http://127.0.0.1:8188/
+```
+
+Viewer 只接受 HTTP(S) 的 `127.0.0.1` 地址和有效端口，不支持局域网地址、远程实例、认证头或绕过自签名证书。
+
+### 2. 导出 API 工作流
+
+在 ComfyUI 中导出 **API format** JSON。普通界面工作流 JSON 不能直接导入。
+
+### 3. 设置节点标题
+
+集成通过节点的 `_meta.title` 识别接入点，标题区分大小写：
+
+| 节点标题 | 作用 |
+| --- | --- |
+| `INPUT` | 接收上传后的图片路径；至少需要一个，可声明多个 |
+| `OUTPUT*` | 收集图片或文本输出，例如 `OUTPUT1`、`OUTPUT image`、`OUTPUT prompt` |
+| `REVERSE` | 接收按 Viewer 设置格式化的 Booru 标签，可选 |
+| `OPTION*` | 暴露可保存的文本或整数参数，例如 `OPTION prompt`、`OPTION steps` |
+
+注意：
+
+- 标题必须精确匹配；`Input`、`input` 不等同于 `INPUT`。
+- 单独的 `OPTION` 不会被识别，必须在后面继续添加名称。
+- 文本 OPTION 使用节点的 `inputs.text`；整数 OPTION 使用受支持的直接整数输入。
+- 文本 OPTION 支持多行，输入框随内容增长，约 8 行后改为内部滚动；换行会原样保存和发送。
+- 导入时会校验特殊节点和必要输入，错误工作流不会进入预设列表。
+
+### 4. 导入、激活并发送
+
+1. 在 Viewer 顶部打开 ComfyUI 工作台。
+2. 切换到“工作流”，导入 API JSON。
+3. 激活目标工作流并保存 OPTION 参数。
+4. 从缩略图、详情、多选栏、收藏分组或本地文件区发送图片。
+
+GIF、视频和 ugoira/ZIP 会提取第一帧后作为图片输入。每张输入图片生成一个独立任务。
+
+## 队列、快照与取消
+
+- 队列按串行顺序执行，可调整等待中任务的顺序。
+- 入队时会冻结工作流 JSON、OPTION 值、服务器地址、输入引用和可用标签。之后修改预设不会影响已排队任务。
+- 本机 ComfyUI 暂时不可用时，任务会等待并自动重试；扩展后台重启后会恢复队列。
+- 运行中取消会在确认后调用 ComfyUI 实例级 `/interrupt`，可能影响同一实例中并非由 Viewer 创建的任务。
+- 如果 `/prompt` 已提交但响应丢失，Viewer 不会自动重复提交，而会把记录显示为失败并附带无法确认的原因，可由用户检查后重试。
+
+## 历史记录与输出缓存
+
+历史中显示三种最终状态：
+
+- 成功
+- 失败（具体原因）
+- 取消
+
+展开记录可查看 `OUTPUT*` 图片和文本。点击图片缩略图时优先读取本地输出缓存；缓存不存在或已失效时再从原 ComfyUI 地址读取。因此启用输出缓存后，即使 ComfyUI 已关闭，已缓存结果仍可打开。
+
+删除单条历史或清空历史会删除 Viewer 中的本地记录和对应输出缓存，不会删除 ComfyUI 服务器上的文件。
+
+## 从其他网页发送图片
+
+该功能默认关闭。
+
+### 开启方式
+
+1. 打开扩展设置页的 ComfyUI 区域。
+2. 开启“在其他网页启用‘发送到 ComfyUI’”。
+3. 浏览器会请求可选的 `<all_urls>` 权限；拒绝后功能保持关闭。
+4. 设置“图片最小总像素”。默认是 `262144`，相当于 `512 × 512`。
+
+关闭功能会撤销该可选权限，并从已打开页面移除入口。必需权限仍只覆盖五个 Booru 图源和 `127.0.0.1`。
+
+### 使用方式
+
+- 开启后，普通 HTTP/HTTPS 网页右下角显示圆角 `D`。点击它会在当前网页中打开完整 ComfyUI 工作台，不会跳转 Viewer。
+- 悬停 `<img>` 或 `<picture>` 图片时，若 `naturalWidth × naturalHeight` 达到阈值，图片右上角会显示与 Viewer 相同的 Sparkles 发送按钮。
+- 点击后直接加入当前激活工作流，不打开确认页。
+- 响应式图片优先使用 `srcset` 中最大的候选；下载失败时依次回退到 `currentSrc` 和 `src`。
+- 第三方网页图片只填充 `INPUT`，不会填充或清空 `REVERSE`。
+- 扩展不携带网页 Cookie 或凭据，仅下载公开 HTTP/HTTPS 图片；本机、局域网和链路本地地址会被拒绝，单张图片上限为 100 MiB。
+
+扩展无法注入 `chrome://`、`edge://`、浏览器扩展商店等受保护页面。仅支持 `<img>` 和 `<picture>`，不扫描 CSS 背景图或 canvas。
+
+## 键盘操作
+
+启用键盘快捷键后，Viewer 内可使用：
+
+| 按键 | 操作 |
+| --- | --- |
+| `C` | 打开 ComfyUI 工作台；再次按 `C` 关闭 |
+| `Esc` | 关闭当前详情、筛选或侧栏 |
+| `S` | 切换侧栏 |
+| `G` / `M` / `L` | 网格 / 瀑布流 / 列表布局 |
+| `1` - `5` | 切换图源；工作台打开时切换队列 / 工作流 / 历史标签 |
+| `F` | 收藏当前详情或悬停图片 |
+| `D` | 下载当前详情或悬停图片 |
+| `Ctrl+K` | 聚焦搜索框 |
+| `Ctrl+A` | 选择当前结果 |
+
+在输入框、文本框或选择框中输入时，普通单键快捷键不会触发。第三方网页中的工作台不绑定 `C`，请使用右下角 `D` 和工作台关闭按钮。
+
+## 存储与隐私
+
+- 浏览缓存默认上限为 512 MiB，缓存条目默认保留 24 小时。
+- ComfyUI 任务媒体默认上限为 1 GiB，活动任务输入不会被自动清理。
+- 历史默认保留 100 条，可在设置中调整。
+- 所有收藏、工作流、队列、历史和媒体缓存都保存在本机浏览器存储中。
+- 项目没有分析、遥测或项目服务器。
+- 完整数据范围和权限理由见[隐私声明](PRIVACY.md)。
+
+## 常见问题
+
+### 工作流无法导入
+
+确认文件是 API format JSON，并检查是否至少有一个标题精确为 `INPUT` 的有效节点。导入提示会指出节点 ID、标题和无效字段。
+
+### 点击发送后提示没有活动工作流
+
+打开工作台的“工作流”标签，导入并激活一个有效预设。第三方网页发送也使用同一个活动工作流。
+
+### ComfyUI 一直显示等待服务
+
+确认 ComfyUI 已启动，地址使用 `127.0.0.1` 而不是 `localhost` 或局域网 IP，并确认端口正确。
+
+### 历史缩略图可见，但大图无法打开
+
+启用输出缓存后重新运行任务。新记录会优先打开本地 Blob；没有缓存时要求原 ComfyUI 地址仍可访问且服务器文件未被移动。
+
+### 第三方网页没有 D 或发送按钮
+
+确认功能已开启且浏览器已授予可选全站权限，然后刷新目标网页。发送按钮只出现在达到像素阈值的已加载 `<img>` / `<picture>` 上。
+
+### 图片发送失败
+
+部分网站使用临时签名 URL、防盗链或非图片响应。扩展会从最大 `srcset` 候选回退，但不会携带网页凭据、Cookie 或授权头，也不会下载本机、局域网、链路本地地址或超过 100 MiB 的资源。
+
+## 开发验证
 
 ```bash
 npm run dev
@@ -120,45 +252,6 @@ npm run build:all
 npm run validate:artifacts
 ```
 
-## English
-
-### From reference search to local generation
-
-Danbooru Viewer turns the browser's new tab into one continuous image workflow. Search five Booru sources through one interface, inspect full-quality media with its tag context, organize references in a local library, then send a thumbnail, selection, favorite group, or local file directly to ComfyUI on `127.0.0.1`.
-
-The handoff preserves what matters. Each queued task freezes its API workflow, `OPTION*` values, formatted tags, and input reference. The persistent serial queue keeps running after the Viewer closes, waits through local service outages, restores after background restarts, and brings image and text outputs back into the workbench.
-
-### Product highlights
-
-- Unified search for Danbooru, Gelbooru, Safebooru, Yande.re, and Rule34
-- Autocomplete, include/exclude tags, quick tags, reusable filter presets, ratings, score, date, dimensions, and sorting
-- Virtualized grid, masonry, and dense list layouts with progressive preview, sample, or original media
-- Categorized tags, source metadata, relationships, pools, comments, voting, and remote favorites where supported
-- A fully local favorites library with groups, batch organization, search, filtering, and reviewed JSON import
-- Direct ComfyUI actions from cards, details, selections, favorite groups, and local files or folders
-- API workflow management, editable options, progress, current node, elapsed time, outputs, history, retry, and cancellation
-- First-frame normalization for GIF, video, and ugoira/ZIP inputs
-- English and Simplified Chinese UI, responsive layouts, and light, dark, or system themes
-- No analytics or telemetry; localhost-only ComfyUI access and no arbitrary webpage permission
-
-### ComfyUI convention
-
-Export an **API format** JSON workflow and import it in the workbench. Node titles define the integration contract: `INPUT` receives images, `OUTPUT*` collects image or text results, `REVERSE` receives formatted post tags, and `OPTION*` exposes saved text or integer controls. The default server is `http://127.0.0.1:8188/`.
-
-ComfyUI is intentionally limited to `127.0.0.1`. Running-task cancellation uses the instance-wide `/interrupt` endpoint after confirmation. Ambiguous `/prompt` submissions require manual confirmation instead of automatic retry. Task media uses a configurable 1 GB default local limit, while active inputs are protected from cleanup.
-
-### Build from source
-
-Requires [Node.js](https://nodejs.org/) 20.19 or newer and npm.
-
-```bash
-npm ci
-npm run build          # Chrome / Edge -> dist/
-npm run build:firefox  # Firefox -> dist-firefox/
-```
-
-Load `dist` as an unpacked extension in Chromium, or load `dist-firefox/manifest.json` as a temporary add-on in Firefox 140 or newer. See the [privacy notice](PRIVACY.md) for the complete local storage, network, and permission model.
-
-## License
+## 许可证
 
 [MIT](LICENSE)

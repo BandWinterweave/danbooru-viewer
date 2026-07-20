@@ -53,7 +53,7 @@ export function Header() {
         <SearchBar />
           <RatingQuickToggle />
            <button className={`meta-shortcut ${filtersOpen ? 'is-active' : ''}`} aria-expanded={filtersOpen} aria-controls="advanced-filters" title={shellMessages.header.advancedFilters} onClick={toggleFilters}><SlidersHorizontal size={15} /> {shellMessages.header.filters}</button>
-           <button className={`meta-shortcut comfy-shortcut ${comfyOpen ? 'is-active' : ''}`} aria-haspopup="dialog" aria-expanded={comfyOpen} title={comfyMessages.workbench} onClick={openComfy}><Sparkles size={15} /> {comfyMessages.name}</button>
+           <button className={`meta-shortcut comfy-shortcut ${comfyOpen ? 'is-active' : ''}`} aria-haspopup="dialog" aria-expanded={comfyOpen} aria-keyshortcuts="C" title={comfyMessages.workbench} onClick={openComfy}><Sparkles size={15} /> {comfyMessages.name}</button>
            <button className={`meta-shortcut preview-toggle ${hideUnavailablePreviews ? 'is-active' : ''}`} aria-pressed={hideUnavailablePreviews} title={shellMessages.header.hideUnavailablePreviews} onClick={() => setHideUnavailablePreviews(!hideUnavailablePreviews)}><ImageOff size={15} /> {shellMessages.header.hideUnavailable}</button>
       </div>}
       {view === 'browse' && <><AdvancedFilter open={filtersOpen} /><FilterChipBar onAddFilter={focusSearch} /></>}

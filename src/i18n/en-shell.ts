@@ -126,6 +126,7 @@ export const shellMessages = {
     downloadsAndPlayback: 'Downloads and playback',
     filenameVariables: 'Filename variables: {id}, {tags}, {artist}, {rating}, {source}, {size}.',
     filenameRule: 'Filename rule',
+    videoAutoplay: 'Autoplay videos in large view (muted)',
     enableKeyboardShortcuts: 'Enable keyboard shortcuts',
     tagCopy: 'Tag copy',
     tagCopyDescription: 'Choose which Danbooru tag categories are copied and how prompt syntax is formatted.',

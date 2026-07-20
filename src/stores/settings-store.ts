@@ -20,6 +20,7 @@ interface SettingsStore {
   detailPreloadCount: number;
   thumbnailQuality: ThumbnailQuality;
   imageCacheLimitBytes: number;
+  videoAutoplay: boolean;
   keyboardEnabled: boolean;
   downloadRule: string;
   quickTags: string[];
@@ -32,6 +33,8 @@ interface SettingsStore {
   comfyStorageLimitBytes: number;
   comfyReplaceReverseWithTags: boolean;
   comfyCacheOutputs: boolean;
+  comfyPageIntegrationEnabled: boolean;
+  comfyPageImageMinPixels: number;
   credentials: Partial<Record<BooruSource, Credentials>>;
   credentialRevisions: Partial<Record<BooruSource, number>>;
   setActiveSource: (source: BooruSource) => void;
@@ -43,6 +46,7 @@ interface SettingsStore {
   setDetailPreloadCount: (count: number) => void;
   setThumbnailQuality: (quality: ThumbnailQuality) => void;
   setImageCacheLimitBytes: (value: number) => void;
+  setVideoAutoplay: (enabled: boolean) => void;
   setKeyboardEnabled: (enabled: boolean) => void;
   setDownloadRule: (rule: string) => void;
   addQuickTag: (tag: string) => void;
@@ -56,6 +60,8 @@ interface SettingsStore {
   setComfyStorageLimitBytes: (value: number) => void;
   setComfyReplaceReverseWithTags: (enabled: boolean) => void;
   setComfyCacheOutputs: (enabled: boolean) => void;
+  setComfyPageIntegrationEnabled: (enabled: boolean) => void;
+  setComfyPageImageMinPixels: (value: number) => void;
   setCredentials: (source: BooruSource, username: string, apiKey: string) => void;
 }
 
@@ -70,6 +76,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     detailPreloadCount: 2,
     thumbnailQuality: 'preview',
     imageCacheLimitBytes: 512 * 1024 ** 2,
+    videoAutoplay: true,
     keyboardEnabled: true,
     downloadRule: '{source}-{id}-{artist}',
     quickTags: [],
@@ -82,6 +89,8 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     comfyStorageLimitBytes: 1024 * 1024 * 1024,
     comfyReplaceReverseWithTags: true,
     comfyCacheOutputs: true,
+    comfyPageIntegrationEnabled: false,
+    comfyPageImageMinPixels: 262_144,
     credentials: {},
     credentialRevisions: {},
     setActiveSource: (activeSource) => set({ activeSource }),
@@ -93,6 +102,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setDetailPreloadCount: (detailPreloadCount) => set({ detailPreloadCount: Math.min(20, Math.max(0, Math.round(detailPreloadCount) || 0)) }),
     setThumbnailQuality: (thumbnailQuality) => set({ thumbnailQuality }),
     setImageCacheLimitBytes: (imageCacheLimitBytes) => set({ imageCacheLimitBytes: Math.min(10 * 1024 ** 3, Math.max(64 * 1024 ** 2, Math.round(imageCacheLimitBytes) || 512 * 1024 ** 2)) }),
+    setVideoAutoplay: (videoAutoplay) => set({ videoAutoplay }),
     setKeyboardEnabled: (keyboardEnabled) => set({ keyboardEnabled }),
     setDownloadRule: (downloadRule) => set({ downloadRule: downloadRule.trim() || '{source}-{id}' }),
     addQuickTag: (rawTag) => set((state) => { const tag = rawTag.trim().replace(/\s+/g, '_'); return !tag || state.quickTags.includes(tag) ? {} : { quickTags: [...state.quickTags, tag] }; }),
@@ -106,6 +116,8 @@ export const useSettingsStore = create<SettingsStore>()(persist(
     setComfyStorageLimitBytes: (comfyStorageLimitBytes) => set({ comfyStorageLimitBytes: Math.min(10 * 1024 ** 3, Math.max(64 * 1024 ** 2, Math.round(comfyStorageLimitBytes) || 1024 ** 3)) }),
     setComfyReplaceReverseWithTags: (comfyReplaceReverseWithTags) => set({ comfyReplaceReverseWithTags }),
     setComfyCacheOutputs: (comfyCacheOutputs) => set({ comfyCacheOutputs }),
+    setComfyPageIntegrationEnabled: (comfyPageIntegrationEnabled) => set({ comfyPageIntegrationEnabled }),
+    setComfyPageImageMinPixels: (comfyPageImageMinPixels) => set({ comfyPageImageMinPixels: Math.min(100_000_000, Math.max(1, Math.round(comfyPageImageMinPixels) || 262_144)) }),
     setCredentials: (source, username, apiKey) => set((state) => ({
       credentials: { ...state.credentials, [source]: { username: username.trim(), apiKey: apiKey.trim() } },
       credentialRevisions: { ...state.credentialRevisions, [source]: (state.credentialRevisions[source] ?? 0) + 1 },
@@ -114,7 +126,7 @@ export const useSettingsStore = create<SettingsStore>()(persist(
   {
     name: 'danbooru-settings',
     storage: createJSONStorage(() => extensionStorage),
-    version: 4,
+    version: 6,
     migrate: (persistedState) => {
       if (!persistedState || typeof persistedState !== 'object') return persistedState as SettingsStore;
       const state = { ...persistedState as Record<string, unknown> };

@@ -4,20 +4,20 @@ type MessageListener = (message: unknown, sender: unknown, sendResponse: (respon
 
 async function loadBackground(stored: Promise<Record<string, string>>) {
   let listener!: MessageListener;
-  let storageListener!: (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void;
+  const storageListeners: Array<(changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void> = [];
   const setAccessLevel = vi.fn().mockResolvedValue(undefined);
   const sendTabMessage = vi.fn().mockResolvedValue(undefined);
   vi.stubGlobal('chrome', {
     i18n: { getUILanguage: () => 'en' },
     storage: {
       local: { get: vi.fn(() => stored), setAccessLevel },
-      onChanged: { addListener: vi.fn((value) => { storageListener = value; }) },
+      onChanged: { addListener: vi.fn((value) => { storageListeners.push(value); }) },
     },
     runtime: { onMessage: { addListener: vi.fn((value) => { listener = value; }) } },
     tabs: { query: vi.fn().mockResolvedValue([{ id: 17 }]), sendMessage: sendTabMessage },
   });
   await import('../../src/background/index');
-  return { listener, setAccessLevel, storageListener, sendTabMessage };
+  return { listener, setAccessLevel, storageListeners, sendTabMessage };
 }
 
 describe('background boundaries', () => {
@@ -29,7 +29,7 @@ describe('background boundaries', () => {
 
   it('restricts local storage and exposes only language to content scripts', async () => {
     const storedValue = JSON.stringify({ state: { language: 'zh-CN', credentials: { danbooru: { apiKey: 'secret' } } } });
-    const { listener, setAccessLevel, storageListener, sendTabMessage } = await loadBackground(Promise.resolve({ 'danbooru-settings': storedValue }));
+    const { listener, setAccessLevel, storageListeners, sendTabMessage } = await loadBackground(Promise.resolve({ 'danbooru-settings': storedValue }));
     const sendResponse = vi.fn();
 
     expect(setAccessLevel).toHaveBeenCalledWith({ accessLevel: 'TRUSTED_CONTEXTS' });
@@ -37,7 +37,7 @@ describe('background boundaries', () => {
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ language: 'zh-CN' }));
     expect(JSON.stringify(sendResponse.mock.calls)).not.toContain('secret');
 
-    storageListener({ 'danbooru-settings': { newValue: JSON.stringify({ state: { language: 'en', credentials: { apiKey: 'other-secret' } } }) } }, 'local');
+    storageListeners.forEach((storageListener) => storageListener({ 'danbooru-settings': { newValue: JSON.stringify({ state: { language: 'en', credentials: { apiKey: 'other-secret' } } }) } }, 'local'));
     await vi.waitFor(() => expect(sendTabMessage).toHaveBeenCalledWith(17, { type: 'LANGUAGE_CHANGED', payload: { language: 'en' } }));
     expect(JSON.stringify(sendTabMessage.mock.calls)).not.toContain('secret');
   });

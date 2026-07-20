@@ -14,6 +14,7 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage", "downloads", "unlimitedStorage", "scripting", "declarativeNetRequestWithHostAccess"],
+  "optional_host_permissions": ["<all_urls>"],
   "host_permissions": [
     "https://*.donmai.us/*",
     "https://gelbooru.com/*",
@@ -42,8 +43,12 @@
   },
   "content_scripts": [{
     "matches": ["https://danbooru.donmai.us/posts*", "https://danbooru.donmai.us/posts/*"],
-    "js": ["src/content/index.ts"],
+    "js": ["src/content/index.ts", "src/content/page-overlay.ts"],
     "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["src/overlay/index.html"],
+    "matches": ["<all_urls>"]
   }],
   "action": {
     "default_popup": "src/popup/index.html",

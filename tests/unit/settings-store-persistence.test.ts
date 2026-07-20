@@ -31,6 +31,14 @@ describe('settings store migration', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"thumbnailQuality":"sample"');
   });
 
+  it('persists the video autoplay preference', async () => {
+    const store = await loadSettingsStore();
+    store.getState().setVideoAutoplay(false);
+
+    expect(store.getState().videoAutoplay).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('"videoAutoplay":false');
+  });
+
   it('persists and clamps the browsing image cache limit', async () => {
     const store = await loadSettingsStore();
     store.getState().setImageCacheLimitBytes(768 * 1024 ** 2);
@@ -74,5 +82,16 @@ describe('settings store migration', () => {
     const persisted = localStorage.getItem(STORAGE_KEY) ?? '';
     expect(persisted).toContain('"credentialRevisions":{"danbooru":2}');
     expect(persisted).not.toMatch(/credentialRevisions[^}]+first-user|credentialRevisions[^}]+first-key/);
+  });
+
+  it('defaults, persists, and clamps third-party page integration settings', async () => {
+    const store = await loadSettingsStore();
+    expect(store.getState()).toMatchObject({ comfyPageIntegrationEnabled: false, comfyPageImageMinPixels: 262_144 });
+    store.getState().setComfyPageIntegrationEnabled(true);
+    store.getState().setComfyPageImageMinPixels(900_000);
+    expect(store.getState()).toMatchObject({ comfyPageIntegrationEnabled: true, comfyPageImageMinPixels: 900_000 });
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('"comfyPageIntegrationEnabled":true');
+    store.getState().setComfyPageImageMinPixels(0);
+    expect(store.getState().comfyPageImageMinPixels).toBe(262_144);
   });
 });

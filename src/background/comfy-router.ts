@@ -2,10 +2,14 @@ import { parseComfyAddress } from '../services/comfy/client';
 import { ComfyManager } from '../services/comfy/manager';
 import type { ComfyRequestMessage, ComfyResponse, ComfySettingsSnapshot, ComfyStateSnapshot } from '../services/comfy/types';
 import type { TagCategory, UnifiedPost } from '../types/post';
+import { normalizeComfyMedia } from '../services/comfy/media';
+import { isAuthorizedOverlaySender } from './page-integration';
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
 const MAX_BATCH_ITEMS = 2_000;
 const MAX_TEXT = 256;
+const MAX_PAGE_IMAGE_BYTES = 100 * 1024 ** 2;
+const PAGE_IMAGE_TIMEOUT_MS = 30_000;
 const requestTypes = new Set<ComfyRequestMessage['type']>([
   'COMFY_LOAD_STATE', 'COMFY_SAVE_SETTINGS', 'COMFY_IMPORT_WORKFLOW', 'COMFY_EXPORT_WORKFLOW', 'COMFY_ACTIVATE_WORKFLOW',
   'COMFY_SAVE_WORKFLOW_OPTIONS', 'COMFY_RENAME_WORKFLOW', 'COMFY_REPLACE_WORKFLOW', 'COMFY_DUPLICATE_WORKFLOW',
@@ -48,6 +52,77 @@ function validSettings(value: unknown): value is ComfySettingsSnapshot {
 
 function validOptions(value: unknown) {
   return isRecord(value) && Object.keys(value).length <= 500 && Object.entries(value).every(([key, item]) => validId(key) && (typeof item === 'string' && item.length <= 100_000 || Number.isSafeInteger(item)));
+}
+
+function privateIpv4(hostname: string) {
+  const parts = hostname.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [first, second] = parts;
+  return first === 0 || first === 10 || first === 127 || first >= 224
+    || first === 100 && second >= 64 && second <= 127
+    || first === 169 && second === 254
+    || first === 172 && second >= 16 && second <= 31
+    || first === 192 && (second === 0 || second === 168)
+    || first === 198 && (second === 18 || second === 19);
+}
+
+export function isAllowedPageImageUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;
+    const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if ((!hostname.includes('.') && !hostname.includes(':')) || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.home.arpa')) return false;
+    if (privateIpv4(hostname)) return false;
+    if (hostname.includes(':')) {
+      if (hostname === '::' || hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || /^fe[89ab]/.test(hostname)) return false;
+      const mapped = hostname.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+      if (mapped && privateIpv4(mapped)) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchPageImage(value: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PAGE_IMAGE_TIMEOUT_MS);
+  try {
+    let url = new URL(value);
+    for (let redirect = 0; redirect <= 5; redirect += 1) {
+      if (!isAllowedPageImageUrl(url.toString())) throw new Error('Private and local image addresses are not allowed');
+      const response = await fetch(url, { credentials: 'omit', redirect: 'manual', referrerPolicy: 'no-referrer', headers: { Accept: 'image/*' }, signal: controller.signal });
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get('location');
+        if (!location || redirect === 5) throw new Error('Image redirected too many times');
+        url = new URL(location, url);
+        continue;
+      }
+      if (!response.ok) throw new Error(`Image request failed (${response.status})`);
+      const declaredSize = Number(response.headers.get('content-length'));
+      if (Number.isFinite(declaredSize) && declaredSize > MAX_PAGE_IMAGE_BYTES) throw new Error('Image exceeds the 100 MB webpage limit');
+      const mediaType = response.headers.get('content-type')?.split(';', 1)[0].trim() || '';
+      if (!mediaType.startsWith('image/')) throw new Error('The selected resource is not an image');
+      if (!response.body) throw new Error('Image response has no body');
+      const reader = response.body.getReader();
+      const chunks: ArrayBuffer[] = [];
+      let size = 0;
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        size += chunk.byteLength;
+        if (size > MAX_PAGE_IMAGE_BYTES) { await reader.cancel(); throw new Error('Image exceeds the 100 MB webpage limit'); }
+        chunks.push(chunk.slice().buffer as ArrayBuffer);
+      }
+      return { blob: new Blob(chunks, { type: mediaType }), url };
+    }
+    throw new Error('Image redirected too many times');
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Image request timed out');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function validateComfyMessage(message: unknown): ComfyRequestMessage | ComfyResponse<never> {
@@ -98,7 +173,13 @@ export function validateComfyMessage(message: unknown): ComfyRequestMessage | Co
 export function isTrustedComfySender(sender: chrome.runtime.MessageSender): boolean {
   const sourceUrl = sender.url ?? (sender as chrome.runtime.MessageSender & { origin?: string }).origin;
   if (sender.id !== chrome.runtime.id || !sourceUrl) return false;
+  if (sourceUrl.startsWith(chrome.runtime.getURL('src/overlay/index.html'))) return isAuthorizedOverlaySender(sender);
   return sourceUrl.startsWith(chrome.runtime.getURL(''));
+}
+
+export function isTrustedPageSender(sender: chrome.runtime.MessageSender): boolean {
+  if (sender.id !== chrome.runtime.id || typeof sender.tab?.id !== 'number' || !sender.url) return false;
+  try { return ['http:', 'https:'].includes(new URL(sender.url).protocol); } catch { return false; }
 }
 
 async function loadTagOptions() {
@@ -137,6 +218,34 @@ export async function routeComfyMessage(message: unknown, sender: chrome.runtime
   const validated = validateComfyMessage(message);
   if ('ok' in validated) return validated;
   return manager.handle(validated);
+}
+
+export async function enqueuePageImage(message: unknown, sender: chrome.runtime.MessageSender): Promise<ComfyResponse> {
+  if (!isTrustedPageSender(sender) || !isRecord(message)) return invalid('Page image requests are restricted to enabled website integrations');
+  const payload = message.payload;
+  if (!isRecord(payload) || !Array.isArray(payload.urls) || payload.urls.length < 1 || payload.urls.length > 16 || !payload.urls.every((url) => typeof url === 'string' && url.length <= 16_384)) return invalid('Invalid page image request');
+  if (!Number.isSafeInteger(payload.naturalWidth) || !Number.isSafeInteger(payload.naturalHeight) || (payload.naturalWidth as number) < 1 || (payload.naturalHeight as number) < 1) return invalid('Invalid page image dimensions');
+  try {
+    const state = await manager.getState();
+    if (!state.workflows.some((workflow) => workflow.active)) throw new Error('Import and activate a valid workflow before sending');
+    let lastError: unknown;
+    for (const value of payload.urls as string[]) {
+      try {
+        const { blob, url } = await fetchPageImage(value);
+        let filename = 'web-image';
+        try { filename = decodeURIComponent(url.pathname.split('/').filter(Boolean).at(-1) || filename); } catch { /* Keep the safe fallback name. */ }
+        const normalized = await normalizeComfyMedia(blob, filename);
+        const record = await manager.storage.putInputBlob(normalized.blob, normalized.filename, normalized.mediaType);
+        const sourceLabel = `${new URL(sender.url!).hostname} / ${normalized.filename}`.slice(0, MAX_TEXT);
+        return manager.handle({ type: 'COMFY_ENQUEUE_FILES', payload: { batchId: crypto.randomUUID(), inputs: [{ kind: 'blob', blobKey: record.key, name: normalized.filename, mediaType: normalized.mediaType, sourceLabel }] } });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('No usable page image URL was found');
+  } catch (error) {
+    return { ok: false, error: { code: 'media', message: error instanceof Error ? error.message : 'Page image could not be queued' } };
+  }
 }
 
 export function initializeComfyBackground(): Promise<void> {

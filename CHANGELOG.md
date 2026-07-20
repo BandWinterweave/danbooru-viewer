@@ -8,12 +8,15 @@ All notable changes to Danbooru Viewer are recorded here. Versions follow Semant
 
 - Added a local ComfyUI workbench with API workflow management, configurable options, post and local-file inputs, a persistent serial queue, progress tracking, output previews, history, retry, cancellation, and background recovery.
 - Added direct ComfyUI actions to post thumbnails, post details, multi-selection, and favorite groups.
+- Added an opt-in third-party webpage integration with optional host permission, large-image hover actions, and an in-page ComfyUI workbench.
 
 ### Changed
 
-- Added narrowly scoped HTTP(S) host access for `127.0.0.1`; arbitrary webpage and system notification permissions remain excluded.
+- Kept required host access narrowly scoped to supported Booru sites and `127.0.0.1`; arbitrary webpage access is requested only as an optional permission when the user enables webpage sending.
 - Documented ComfyUI's local storage, data flow, default 1 GB task-media limit, and localhost-only boundary.
 - Input thumbnails now open a progressive original-quality media viewer instead of enlarging the low-resolution preview.
+- Text workflow options now support multiline auto-growing input; history uses cache-first output viewing and localized success, failure, and cancellation states.
+- The Viewer `C` shortcut now toggles the ComfyUI workbench, and all four rating badges use their matching rating colors.
 - Completed the release validation, reproducible-build, privacy, store-listing, and rollback documentation baseline.
 
 ### Known limitations

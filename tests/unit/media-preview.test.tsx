@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaPreview } from '../../src/components/posts/MediaPreview';
 import { displayImageUrl } from '../../src/services/api/image-url';
 import { normalizePost } from '../../src/services/booru-adapters/danbooru';
@@ -14,7 +14,7 @@ const post = normalizePost({
 });
 
 describe('MediaPreview thumbnail quality', () => {
-  beforeEach(() => useSettingsStore.setState({ thumbnailQuality: 'preview' }));
+  beforeEach(() => useSettingsStore.setState({ thumbnailQuality: 'preview', videoAutoplay: true }));
 
   it('selects preview or sample without falling back to the original image', () => {
     expect(thumbnailImageUrl(post, 'preview')).toBe(post.previewUrl);
@@ -29,13 +29,30 @@ describe('MediaPreview thumbnail quality', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', displayImageUrl(post.sampleUrl));
   });
 
-  it('uses the selected non-original quality for video posters', () => {
+  it('always uses the dedicated preview image for video posters without autoplaying', () => {
     useSettingsStore.setState({ thumbnailQuality: 'sample' });
     const videoPost = { ...post, fileExt: 'mp4', playbackUrl: 'https://cdn.example/playback.mp4' };
     const { container } = render(<MediaPreview post={videoPost} />);
 
-    expect(container.querySelector('video')).toHaveAttribute('poster', displayImageUrl(post.sampleUrl));
-    expect(container.querySelector('video')).not.toHaveAttribute('poster', displayImageUrl(post.fileUrl));
+    expect(container.querySelector('video')).toHaveAttribute('poster', displayImageUrl(post.previewUrl));
+    expect(container.querySelector('video')).not.toHaveAttribute('poster', displayImageUrl(post.sampleUrl));
+    expect(container.querySelector('video')).not.toHaveAttribute('autoplay');
+    expect(container.querySelector('video')).toHaveAttribute('preload', 'none');
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+  });
+
+  it('keeps hover playback even when large-view autoplay is enabled', () => {
+    const videoPost = { ...post, fileExt: 'mp4', playbackUrl: 'https://cdn.example/playback.mp4' };
+    const { container } = render(<MediaPreview post={videoPost} />);
+    const video = container.querySelector('video') as HTMLVideoElement;
+    const play = vi.spyOn(video, 'play').mockResolvedValue();
+    const pause = vi.spyOn(video, 'pause').mockImplementation(() => undefined);
+
+    expect(video).not.toHaveAttribute('autoplay');
+    fireEvent.mouseEnter(video);
+    fireEvent.mouseLeave(video);
+    expect(play).toHaveBeenCalledOnce();
+    expect(pause).toHaveBeenCalledOnce();
   });
 
   it('retries after the post media URL or thumbnail quality changes', async () => {

@@ -26,6 +26,7 @@ const requiredHostPermissions = new Set([
   'http://127.0.0.1/*',
   'https://127.0.0.1/*',
 ]);
+const optionalHostPermissions = new Set(['<all_urls>']);
 
 async function filesIn(directory, prefix = '') {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -59,6 +60,12 @@ for (const build of builds) {
   );
   if (missingHosts.length || unexpectedHosts.length)
     throw new Error(`${build}: host permissions differ from the reviewed allowlist`);
+  const optionalHosts = new Set(manifest.optional_host_permissions ?? []);
+  if (
+    optionalHosts.size !== optionalHostPermissions.size ||
+    [...optionalHostPermissions].some((permission) => !optionalHosts.has(permission))
+  )
+    throw new Error(`${build}: optional host permissions differ from the reviewed allowlist`);
   if (build === 'dist-firefox' && !Array.isArray(manifest.background?.scripts))
     throw new Error('Firefox build must use background.scripts');
   if (build === 'dist' && !manifest.background?.service_worker)
@@ -82,10 +89,18 @@ for (const build of builds) {
     ...(manifest.background?.scripts ?? []),
     manifest.background?.service_worker,
     ...(manifest.content_scripts ?? []).flatMap((script) => [...(script.js ?? []), ...(script.css ?? [])]),
+    ...(manifest.web_accessible_resources ?? []).flatMap((resource) => resource.resources ?? []),
     ...(manifest.declarative_net_request?.rule_resources ?? []).map((rule) => rule.path),
   ].filter(Boolean);
   const missingFiles = referencedFiles.filter((file) => !files.includes(file.replace(/^\.\//, '')));
   if (missingFiles.length) throw new Error(`${build}: manifest references missing files: ${missingFiles.join(', ')}`);
+  const overlayScript = (manifest.content_scripts ?? []).find((script) => (script.js ?? []).length > 1)?.js?.at(-1);
+  if (!overlayScript) throw new Error(`${build}: dynamic page overlay content script loader is missing`);
+  const overlaySource = await readFile(path.join(directory, overlayScript), 'utf8');
+  if (/\bimport\s*(?:\(|["'])/.test(overlaySource))
+    throw new Error(`${build}: dynamic page overlay content script must be self-contained`);
+  const overlayHtml = await readFile(path.join(directory, 'src', 'overlay', 'index.html'), 'utf8');
+  if (overlayHtml.includes('main.tsx')) throw new Error(`${build}: page overlay HTML was not compiled`);
   if (build === 'dist-firefox' && manifest.browser_specific_settings?.gecko?.strict_min_version !== '140.0')
     throw new Error('Firefox build must retain the reviewed minimum version');
   if (

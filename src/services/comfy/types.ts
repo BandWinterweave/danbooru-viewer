@@ -114,6 +114,12 @@ export interface ComfyOutputReference {
   blobKey?: string;
 }
 
+export interface ComfyOutputResponse {
+  output: ComfyOutputReference;
+  blob?: Blob;
+  url?: string;
+}
+
 export interface ComfyHistoryRecord {
   id: string;
   task: ComfyTaskSnapshot;

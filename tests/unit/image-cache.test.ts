@@ -103,4 +103,14 @@ describe('image cache bounds', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith(first.src);
     vi.useRealTimers();
   });
+
+  it('passes local blob URLs through without fetching or recaching them', async () => {
+    const cache = await loadCache();
+    const image = await cache.acquireCachedImage('blob:comfy-output');
+
+    expect(image.src).toBe('blob:comfy-output');
+    expect(fetch).not.toHaveBeenCalled();
+    image.release();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+  });
 });

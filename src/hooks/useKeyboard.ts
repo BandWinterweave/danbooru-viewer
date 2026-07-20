@@ -20,6 +20,7 @@ export function useKeyboard() {
       if (!settings.keyboardEnabled || (isTyping(event.target) && !(event.ctrlKey && event.key.toLowerCase() === 'k'))) return;
       const key = event.key.toLowerCase();
       const ui = useUiStore.getState();
+      if (ui.comfyOpen) return;
       const postState = usePostStore.getState();
       const current = ui.currentPost;
       const actionTarget = ui.detailOpen ? current : ui.hoveredPost;
@@ -52,6 +53,7 @@ export function useKeyboard() {
         if (credential?.username && credential.apiKey && adapter.vote) { event.preventDefault(); runAsync('api', adapter.vote(current.id, key === 'arrowup' ? 1 : -1, credential)); }
         return;
       }
+      if (key === 'c' && !event.repeat) { event.preventDefault(); ui.openComfy(); return; }
       if (key === 's') { ui.toggleSidebar(); return; }
       if (key === 'g' || key === 'l' || key === 'm') { settings.setLayout(key === 'g' ? 'grid' : key === 'l' ? 'list' : 'masonry'); return; }
       if (/^[1-5]$/.test(key)) settings.setActiveSource(booruSources[Number(key) - 1].id);

@@ -2,7 +2,7 @@ import { LoaderCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { displayImageUrl } from '../../services/api/image-url';
 import { isVideoPost } from '../../services/post-media';
-import type { DetailImageQuality } from '../../stores/settings-store';
+import { useSettingsStore, type DetailImageQuality } from '../../stores/settings-store';
 import type { UnifiedPost } from '../../types/post';
 import { useI18n } from '../../i18n/runtime';
 import { CachedImage } from './CachedImage';
@@ -16,6 +16,7 @@ export function detailImageUrl(post: UnifiedPost, quality: DetailImageQuality) {
 
 export function PostDetailMedia({ post, quality, preloadPosts = [] }: { post: UnifiedPost; quality: DetailImageQuality; preloadPosts?: UnifiedPost[] }) {
   const { messages: { posts: postMessages } } = useI18n();
+  const videoAutoplay = useSettingsStore((state) => state.videoAutoplay);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [failed, setFailed] = useState(false);
@@ -56,7 +57,7 @@ export function PostDetailMedia({ post, quality, preloadPosts = [] }: { post: Un
 
   return <div className={`detail-media-zoom${isDragging ? ' is-dragging' : ''}`} onWheel={zoom} onDoubleClick={reset} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
     {!loaded && <span className="detail-media-loading"><LoaderCircle className="spin" size={24} /></span>}
-    {video ? <video className={`detail-media-full detail-media-video ${loaded ? 'is-loaded' : ''}`} src={displayImageUrl(post.playbackUrl || post.fileUrl)} poster={thumbnailSource ? displayImageUrl(thumbnailSource) : undefined} controls playsInline preload="auto" onLoadedData={() => setLoaded(true)} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} /> : <>
+    {video ? <video className={`detail-media-full detail-media-video ${loaded ? 'is-loaded' : ''}`} src={displayImageUrl(post.playbackUrl || post.fileUrl)} poster={thumbnailSource ? displayImageUrl(thumbnailSource) : undefined} controls muted={videoAutoplay} loop={videoAutoplay} autoPlay={videoAutoplay} playsInline preload="auto" onLoadedData={() => setLoaded(true)} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} /> : <>
       {thumbnailSource && <img className={`detail-media-thumb ${loaded ? 'is-replaced' : ''}`} src={displayImageUrl(thumbnailSource)} alt="" draggable={false} aria-hidden="true" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />}
       <CachedImage className={`detail-media-full ${loaded ? 'is-loaded' : ''}`} src={displayImageUrl(source)} alt={postMessages.common.postAlt(post.source, post.id)} draggable={false} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
     </>}

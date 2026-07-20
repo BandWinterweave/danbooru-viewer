@@ -69,4 +69,15 @@ describe('useKeyboard detail navigation', () => {
     expect(toggleLocal).not.toHaveBeenCalled();
     expect(downloadPost).not.toHaveBeenCalled();
   });
+
+  it('opens the ComfyUI workbench with C and ignores repeats', () => {
+    const openComfy = vi.fn();
+    useUiStore.setState({ detailOpen: false, comfyOpen: false, openComfy });
+    render(<KeyboardHarness />);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', repeat: true }));
+
+    expect(openComfy).toHaveBeenCalledOnce();
+  });
 });

@@ -70,8 +70,8 @@ export function comfyOutputName(output: ComfyOutputReference) {
 
 const outputCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function sortOutputs(outputs: ComfyOutputReference[]) {
-  return [...outputs].sort((left, right) => outputCollator.compare(comfyOutputName(left), comfyOutputName(right)) || left.nodeId.localeCompare(right.nodeId));
+function sortOutputs(outputs: Array<{ output: ComfyOutputReference; index: number }>) {
+  return [...outputs].sort((left, right) => outputCollator.compare(comfyOutputName(left.output), comfyOutputName(right.output)) || left.output.nodeId.localeCompare(right.output.nodeId));
 }
 
 export async function resolveComfyOutputImage(output: ComfyOutputReference, serverUrl: string): Promise<ComfyViewerImage | null> {
@@ -83,7 +83,7 @@ export async function resolveComfyOutputImage(output: ComfyOutputReference, serv
   return { url: new ComfyClient(serverUrl).getViewUrl({ filename: output.filename, subfolder: output.subfolder, type: output.type }).toString(), label: comfyOutputName(output) };
 }
 
-function OutputImage({ output, serverUrl, onClick }: { output: ComfyOutputReference; serverUrl: string; onClick?: (output: ComfyOutputReference) => void }) {
+function OutputImage({ output, outputIndex, serverUrl, onClick }: { output: ComfyOutputReference; outputIndex: number; serverUrl: string; onClick?: (output: ComfyOutputReference, outputIndex: number) => void }) {
   const [blobUrl, setBlobUrl] = useState('');
   useEffect(() => {
     if (!output.blobKey) { setBlobUrl(''); return; }
@@ -99,15 +99,16 @@ function OutputImage({ output, serverUrl, onClick }: { output: ComfyOutputRefere
   const remoteUrl = output.filename ? new ComfyClient(serverUrl).getViewUrl({ filename: output.filename, subfolder: output.subfolder, type: output.type }).toString() : '';
   const src = blobUrl || remoteUrl;
   const name = comfyOutputName(output);
-  return src ? <figure>{onClick ? <button title={`View output ${name}`} onClick={() => onClick(output)}><img src={src} alt={`ComfyUI output ${name}`} /></button> : <img src={src} alt={`ComfyUI output ${name}`} />}<figcaption>{name}</figcaption></figure> : null;
+  return src ? <figure>{onClick ? <button title={`View output ${name}`} onClick={() => onClick(output, outputIndex)}><img src={src} alt={`ComfyUI output ${name}`} /></button> : <img src={src} alt={`ComfyUI output ${name}`} />}<figcaption>{name}</figcaption></figure> : null;
 }
 
-export function ComfyTaskOutputs({ outputs = [], serverUrl, onOutputClick }: { outputs?: ComfyOutputReference[]; serverUrl: string; onOutputClick?: (output: ComfyOutputReference) => void }) {
-  const images = sortOutputs(outputs.filter((output) => output.kind === 'image'));
-  const texts = sortOutputs(outputs.filter((output) => output.kind === 'text' && output.text));
+export function ComfyTaskOutputs({ outputs = [], serverUrl, onOutputClick }: { outputs?: ComfyOutputReference[]; serverUrl: string; onOutputClick?: (output: ComfyOutputReference, outputIndex: number) => void }) {
+  const indexed = outputs.map((output, index) => ({ output, index }));
+  const images = sortOutputs(indexed.filter(({ output }) => output.kind === 'image'));
+  const texts = sortOutputs(indexed.filter(({ output }) => output.kind === 'text' && output.text));
   if (!images.length && !texts.length) return null;
   return <div className="comfy-task-outputs">
-    {images.length > 0 && <div className="comfy-task-output-images">{images.map((output, index) => <OutputImage key={`${output.nodeId}:${output.filename}:${index}`} output={output} serverUrl={serverUrl} onClick={onOutputClick} />)}</div>}
-    {texts.length > 0 && <div className="comfy-task-output-texts">{texts.map((output, index) => <div key={`${output.nodeId}:${index}`}><span>{comfyOutputName(output)}</span><pre>{output.text}</pre></div>)}</div>}
+    {images.length > 0 && <div className="comfy-task-output-images">{images.map(({ output, index }) => <OutputImage key={`${output.nodeId}:${output.filename}:${index}`} output={output} outputIndex={index} serverUrl={serverUrl} onClick={onOutputClick} />)}</div>}
+    {texts.length > 0 && <div className="comfy-task-output-texts">{texts.map(({ output, index }) => <div key={`${output.nodeId}:${index}`}><span>{comfyOutputName(output)}</span><pre>{output.text}</pre></div>)}</div>}
   </div>;
 }

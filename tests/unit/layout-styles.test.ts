@@ -34,9 +34,15 @@ describe('workspace layout styles', () => {
     expect(styles).not.toContain('.image-cache-loading');
   });
 
-  it('uses the sensitive rating color independently from general', () => {
+  it('keeps all four rating colors independent', () => {
     expect(styles).toMatch(/\.filter-chip--rating-s \{[^}]*var\(--blue\)/);
     expect(styles).toMatch(/\.rating-badge--s \{[^}]*var\(--blue\)/);
+    expect(styles).toMatch(/\.rating-badge--q \{[^}]*var\(--amber\)/);
+    expect(styles).toMatch(/\.rating-badge--e \{[^}]*var\(--coral\)/);
     expect(styles).not.toContain('.rating-badge--g, .rating-badge--s');
+  });
+
+  it('caps multiline ComfyUI options at eight lines', () => {
+    expect(styles).toMatch(/\.comfy-options textarea \{[^}]*max-height: calc\(8lh \+ 18px\);[^}]*resize: none;/);
   });
 });

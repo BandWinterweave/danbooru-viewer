@@ -132,6 +132,10 @@ test('ComfyUI workbench is reachable and stays within the desktop viewport', asy
   await workbench.getByTitle('Close').click();
   await expect(workbench).toBeHidden();
   await expect(trigger).toBeFocused();
+  await page.keyboard.press('c');
+  await expect(workbench).toBeVisible();
+  await page.keyboard.press('c');
+  await expect(workbench).toBeHidden();
 });
 
 test('reserved gutter absorbs every inline tag action without adding a wrapped row', async ({ mockedPage: page }) => {

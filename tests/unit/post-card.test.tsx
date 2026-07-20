@@ -63,6 +63,14 @@ describe('PostCard', () => {
     expect(container.querySelector('.rating-badge')?.tagName).toBe('SPAN');
   });
 
+  it('adds a video format badge without changing the video preview element', () => {
+    const videoPost = { ...post, fileExt: 'mp4', fileUrl: 'https://cdn.example/video.mp4', playbackUrl: 'https://cdn.example/video.mp4' };
+    const { container } = render(<PostCard post={videoPost} />);
+
+    expect(container.querySelector('.post-image-link > video')).toHaveAttribute('poster', displayImageUrl(post.previewUrl));
+    expect(container.querySelector('.post-image-link > .media-kind')).toHaveTextContent('MP4');
+  });
+
   it('shows multiple tags and applies the selected tag', async () => {
     vi.useFakeTimers();
     const { container } = render(<PostCard post={post} />);

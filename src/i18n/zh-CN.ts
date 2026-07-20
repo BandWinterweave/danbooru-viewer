@@ -31,8 +31,9 @@ export const zhCN = {
     queue: '队列', workflows: '工作流', history: '历史', localMedia: '本地媒体', dropFiles: '将文件或文件夹拖放到此处', files: '选择文件', folder: '选择文件夹', import: '导入', active: '已激活', preset: '预设',
     importEmpty: '导入 ComfyUI API JSON 工作流以开始使用。', workflowOptions: '工作流参数', saveOptions: '保存参数', serialExecution: '串行执行', activeTasks: (count: number) => `${count} 个活动任务`, queueEmpty: '排队任务会显示在这里。',
     localRecords: '本地记录', clear: '清空', historyEmpty: '完成后的图片和文本输出会显示在这里。', send: '发送到 ComfyUI', sendSelection: '将所选项发送到 ComfyUI', sendGroup: '将分组发送到 ComfyUI',
+    historyCompleted: '成功', historyCancelled: '取消', historyFailed: (reason?: string) => reason ? `失败（${reason}）` : '失败',
     noWorkflow: '没有已激活的 ComfyUI 工作流', noWorkflowBody: '请打开 ComfyUI 工作台，导入或激活 API 工作流。', sent: '已发送到 ComfyUI', tasksAdded: (count: number) => `已向队列添加 ${count} 个任务。`, confirmBatch: (count: number) => `将 ${count} 个项目作为独立任务发送到 ComfyUI？`,
-    settingsDescription: '本地工作流执行、任务历史和媒体缓存。仅允许 127.0.0.1。', serverAddress: '服务器地址', historyRecords: '历史记录数', storageLimit: '存储上限（MB）', replaceReverse: '使用格式化图片标签替换 REVERSE 文本', cacheOutputs: '在本地缓存输出图片', saveSettings: '保存 ComfyUI 设置', saved: '已保存',
+    settingsDescription: '本地工作流执行、任务历史、媒体缓存与可选的第三方网页发送功能。仅允许 127.0.0.1。', serverAddress: '服务器地址', historyRecords: '历史记录数', storageLimit: '存储上限（MB）', replaceReverse: '使用格式化图片标签替换 REVERSE 文本', cacheOutputs: '在本地缓存输出图片', pageIntegration: '在其他网页启用“发送到 ComfyUI”', pageIntegrationDescription: '开启时申请普通 HTTP/HTTPS 网页的可选访问权限。悬停大图可直接入队，右下角 D 可打开完整工作台。', pageImageMinPixels: '图片最小总像素', pagePermissionDenied: '未授予网页访问权限，此功能仍保持关闭。', saveSettings: '保存 ComfyUI 设置', saved: '已保存',
   },
   shell: {
     header: {
@@ -155,6 +156,7 @@ export const zhCN = {
       downloadsAndPlayback: '下载与播放',
       filenameVariables: '文件名变量：{id}、{tags}、{artist}、{rating}、{source}、{size}。',
       filenameRule: '文件名规则',
+      videoAutoplay: '大图模式自动播放视频（静音）',
       enableKeyboardShortcuts: '启用键盘快捷键',
       tagCopy: '标签复制',
       tagCopyDescription: '选择要复制的 Danbooru 标签分类以及提示词语法格式。',

@@ -1,9 +1,23 @@
 import { ArrowDown, ArrowUp, Copy, Download, FileUp, Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useComfyStore } from '../../stores/comfy-store';
 import { parseApiWorkflowJson } from '../../services/comfy/workflow';
 import type { ComfyOption } from '../../services/comfy/types';
 import { useI18n } from '../../i18n/runtime';
+
+function resizeTextOption(element: HTMLTextAreaElement | null) {
+  if (!element) return;
+  element.style.height = 'auto';
+  const maxHeight = Number.parseFloat(window.getComputedStyle(element).maxHeight);
+  element.style.height = `${Math.min(element.scrollHeight, Number.isFinite(maxHeight) ? maxHeight : element.scrollHeight)}px`;
+  element.style.overflowY = Number.isFinite(maxHeight) && element.scrollHeight > maxHeight ? 'auto' : 'hidden';
+}
+
+function TextOptionInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => resizeTextOption(ref.current), [value]);
+  return <textarea ref={ref} rows={1} value={value} onChange={(event) => { resizeTextOption(event.currentTarget); onChange(event.target.value); }} />;
+}
 
 export function WorkflowManager() {
   const { messages: { comfy: messages } } = useI18n();
@@ -52,7 +66,9 @@ export function WorkflowManager() {
     </div>
     {active && options.length > 0 && <form className="comfy-options" onSubmit={(event) => { event.preventDefault(); void request({ type: 'COMFY_SAVE_WORKFLOW_OPTIONS', payload: { workflowId: active.id, options: values } }); }}>
       <h3>{messages.workflowOptions}</h3>
-      {options.map((option) => <label key={option.nodeId}>{option.title}<input type={option.kind === 'integer' ? 'number' : 'text'} step={option.kind === 'integer' ? 1 : undefined} value={values[option.nodeId] ?? option.value} onChange={(event) => setValues((current) => ({ ...current, [option.nodeId]: option.kind === 'integer' ? Number(event.target.value) : event.target.value }))} /></label>)}
+      {options.map((option) => <label key={option.nodeId}>{option.title}{option.kind === 'text'
+        ? <TextOptionInput value={String(values[option.nodeId] ?? option.value)} onChange={(value) => setValues((current) => ({ ...current, [option.nodeId]: value }))} />
+        : <input type="number" step={1} value={values[option.nodeId] ?? option.value} onChange={(event) => setValues((current) => ({ ...current, [option.nodeId]: Number(event.target.value) }))} />}</label>)}
       <button className="secondary-button" disabled={busy}>{messages.saveOptions}</button>
     </form>}
   </section>;

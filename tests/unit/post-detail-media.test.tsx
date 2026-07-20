@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PostDetailMedia } from '../../src/components/posts/PostDetailMedia';
 import { normalizePost } from '../../src/services/booru-adapters/danbooru';
+import { useSettingsStore } from '../../src/stores/settings-store';
 
 vi.mock('../../src/components/posts/CachedImage', () => ({ CachedImage: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} /> }));
 
@@ -39,11 +40,14 @@ describe('PostDetailMedia', () => {
   });
 
   it('provides native controls and zooming for video', () => {
+    useSettingsStore.setState({ videoAutoplay: true });
     const video = { ...post, fileExt: 'mp4', fileUrl: 'https://cdn.example/video.mp4', playbackUrl: 'https://cdn.example/video.mp4' };
     const { container } = render(<PostDetailMedia post={video} quality="original" />);
     const zoom = container.querySelector('.detail-media-zoom') as HTMLElement;
     fireEvent.wheel(zoom, { deltaY: -5000 });
     expect(container.querySelector('video')).toHaveAttribute('controls');
+    expect(container.querySelector('video')).toHaveAttribute('autoplay');
+    expect(container.querySelector<HTMLVideoElement>('video')?.muted).toBe(true);
     expect(container.querySelector<HTMLElement>('video')?.style.transform).toContain('scale(50)');
   });
 });

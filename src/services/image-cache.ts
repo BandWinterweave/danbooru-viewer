@@ -110,6 +110,7 @@ async function resolveImageUrl(rawUrl: string): Promise<string> {
 }
 
 export async function acquireCachedImage(url: string) {
+  if (url.startsWith('blob:') || url.startsWith('data:')) return { src: url, release: () => undefined };
   let request = pendingImages.get(url);
   if (!request) {
     request = resolveImageUrl(url);

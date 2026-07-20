@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
 import manifest from './src/manifest.json';
+import { resolve } from 'node:path';
 
 const apiTargets: Record<string, string> = {
   danbooru: 'https://danbooru.donmai.us',
@@ -137,12 +138,15 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       sourcemap: false,
       rollupOptions: {
+        input: { overlay: resolve(import.meta.dirname, 'src/overlay/index.html') },
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom'],
-            state: ['zustand', 'idb-keyval'],
-            virtual: ['@tanstack/react-virtual'],
-          },
+          manualChunks: development
+            ? undefined
+            : {
+                react: ['react', 'react-dom'],
+                state: ['zustand', 'idb-keyval'],
+                virtual: ['@tanstack/react-virtual'],
+              },
         },
       },
     },

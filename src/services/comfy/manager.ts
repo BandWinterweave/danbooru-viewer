@@ -175,15 +175,15 @@ export class ComfyManager {
   private async enqueueFiles(inputs: ComfyBlobInput[], batchId: string) {
     for (const input of inputs) if (!await this.storage.getBlob(input.blobKey, 'input')) throw new Error(`Input file ${input.name} is unavailable`);
     const options = await this.getTagOptions();
-    return this.enqueue(inputs.map((input) => ({ input, sourceLabel: input.sourceLabel ?? input.name, reverseText: input.post ? formatPostTagsForReverse(input.post, options) : '' })), batchId);
+    return this.enqueue(inputs.map((input) => ({ input, sourceLabel: input.sourceLabel ?? input.name, reverseText: input.post ? formatPostTagsForReverse(input.post, options) : undefined })), batchId);
   }
 
-  private async enqueue(items: Array<{ input: ComfyTaskSnapshot['input']; sourceLabel: string; reverseText: string }>, batchId: string) {
+  private async enqueue(items: Array<{ input: ComfyTaskSnapshot['input']; sourceLabel: string; reverseText?: string }>, batchId: string) {
     const preset = (await this.storage.listWorkflows()).find((workflow) => workflow.active);
     if (!preset) throw new Error('Import and activate a valid workflow before sending');
     const settings = await this.storage.getSettings();
     const now = Date.now();
-    const tasks = items.map((item, index): ComfyTaskSnapshot => ({ id: crypto.randomUUID(), batchId, status: 'queued', workflowId: preset.id, sourceLabel: item.sourceLabel, createdAt: now + index, updatedAt: now + index, serverUrl: settings.baseUrl, workflow: structuredClone(preset.workflow), optionValues: structuredClone(preset.options), reverseText: settings.replaceReverseWithTags ? item.reverseText : undefined, input: structuredClone(item.input), clientId: crypto.randomUUID(), attempts: 0 }));
+    const tasks = items.map((item, index): ComfyTaskSnapshot => ({ id: crypto.randomUUID(), batchId, status: 'queued', workflowId: preset.id, sourceLabel: item.sourceLabel, createdAt: now + index, updatedAt: now + index, serverUrl: settings.baseUrl, workflow: structuredClone(preset.workflow), optionValues: structuredClone(preset.options), reverseText: settings.replaceReverseWithTags && item.reverseText !== undefined ? item.reverseText : undefined, input: structuredClone(item.input), clientId: crypto.randomUUID(), attempts: 0 }));
     for (const task of tasks) {
       await this.storage.saveTask(task);
       if (task.input.kind === 'blob') await this.storage.leaseBlob(task.input.blobKey, task.id);
@@ -228,7 +228,10 @@ export class ComfyManager {
     const history = (await this.storage.listHistory()).find((record) => record.id === historyId);
     const output = history?.outputs[outputIndex];
     if (!history || !output) throw new Error('Output not found');
-    if (output.blobKey) return { output, blob: (await this.storage.getBlob(output.blobKey, 'output'))?.blob };
+    if (output.blobKey) {
+      const cached = await this.storage.getBlob(output.blobKey, 'output');
+      if (cached) return { output, blob: cached.blob };
+    }
     if (output.kind === 'image' && output.filename) return { output, url: new ComfyClient(history.task.serverUrl).getViewUrl({ filename: output.filename, type: output.type, subfolder: output.subfolder }).toString() };
     return { output };
   }

@@ -1,4 +1,4 @@
-import { Check, CircleCheck, ClipboardCheck, Copy, FolderPlus, Heart, Minus, Plus, Sparkles } from 'lucide-react';
+import { Check, CircleCheck, ClipboardCheck, Copy, Film, FolderPlus, Heart, Minus, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFilterStore } from '../../stores/filter-store';
@@ -9,7 +9,7 @@ import { hasDownloaded } from '../../services/download-service';
 import { DownloadMenu } from '../downloads/DownloadMenu';
 import { usePostStore } from '../../stores/post-store';
 import { useSettingsStore } from '../../stores/settings-store';
-import { isLongImagePost, postPageUrl } from '../../services/post-media';
+import { isLongImagePost, isVideoPost, postPageUrl } from '../../services/post-media';
 import { MediaPreview } from './MediaPreview';
 import { formatTagForCopy, formatTagsForCopy, type TagCopyOptions } from '../../services/tag-copy';
 import { useI18n } from '../../i18n/runtime';
@@ -149,7 +149,7 @@ export function PostCard({ post }: { post: UnifiedPost }) {
       <button className="post-comfy" title="Send to ComfyUI" aria-label="Send to ComfyUI" onClick={(event) => { event.stopPropagation(); void sendPostsToComfy([post]); }}><Sparkles size={13} /></button>
       {downloaded && <span className="downloaded-badge" title={postMessages.card.previouslyDownloaded}><CircleCheck size={12} /> {postMessages.card.downloaded}</span>}
       {isLocal && <span className="local-favorite-badge" title={postMessages.card.removeFromLocalFavorites}><Heart size={13} fill="currentColor" /></span>}
-      <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} /></a>
+      <a className="post-image-link" href={postUrl} aria-label={postMessages.card.openPostDetails} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openDetail(post); }}><MediaPreview post={post} />{isVideoPost(post) && <span className="media-kind"><Film size={11} /> {post.fileExt.toUpperCase()}</span>}</a>
       {layout === 'list' && <div className="list-card-info"><div><span>{post.source}</span><strong>#{post.id}</strong><span className={`list-rating rating-${post.rating}`}>{post.rating.toUpperCase()}</span></div><p>{tags.length ? tags.map((tag) => <span data-category={tag.category} key={tag.name}>{tag.name.replaceAll('_', ' ')}</span>) : postMessages.card.noTagsAvailable}</p><dl><div><dt>{postMessages.card.scoreLabel}</dt><dd>{post.score}</dd></div><div><dt>{postMessages.card.favorites}</dt><dd>{post.favCount}</dd></div><div><dt>{postMessages.card.dimensions}</dt><dd>{post.imageWidth || '?'} × {post.imageHeight || '?'}</dd></div><div><dt>{postMessages.card.format}</dt><dd>{post.fileExt.toUpperCase() || postMessages.common.unknown}</dd></div><div><dt>{postMessages.card.uploader}</dt><dd>{post.uploader === 'unknown' ? postMessages.common.unknown : post.uploader}</dd></div><div><dt>{postMessages.card.status}</dt><dd>{postMessages.detail.statuses[post.status ?? 'active']}</dd></div></dl></div>}
       <span className={`rating-badge rating-badge--${post.rating}`} title={postMessages.card.rating(post.rating)}>{post.rating}</span>
       {longImage && <span className="long-image-badge" title={postMessages.card.longImage}>{postMessages.card.longImage}</span>}
